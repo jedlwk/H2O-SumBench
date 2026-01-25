@@ -10,10 +10,9 @@ pip3 install -r requirements.txt
 ```
 
 ### 2. Configure API (Optional - for Era 3 metrics)
-Create a `.env` file in the project root:
+Create a `.env` file or update the `.env.example` file in the project root:
 ```bash
 H2OGPTE_API_KEY=your_api_key_here
-H2OGPTE_ADDRESS=https://your-instance.h2ogpte.com
 ```
 
 ### 3. Launch Application
