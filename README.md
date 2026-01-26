@@ -107,9 +107,15 @@ Result: 15 metrics, 6 API calls
    - Source Document: The original text to summarize
    - Summary: The summary to evaluate
 
-2. **Load sample data** (optional):
-   - Use the sidebar to load pre-configured examples
-   - Helpful for testing and understanding the tool
+2. **Load data** (optional):
+   - **Sample Data**: Use pre-configured examples (default: 3 samples)
+   - **Upload Your Dataset**: Upload CSV, JSON, Excel, or TSV files with multiple rows
+     - Upload file → Select Source column → Select Summary column
+     - Choose row from dropdown: "-- Select a row --", "Row 1", "Row 2", etc.
+     - Data loads automatically when row is selected
+     - Clear button returns to sample data
+   - See [docs/FILE_FORMATS.md](docs/FILE_FORMATS.md) for detailed guide
+   - Example dataset files in `examples/` folder (3 formats × 3 rows each)
 
 3. **Configure model** (if using API metrics):
    - Select your preferred LLM from the sidebar
@@ -144,7 +150,13 @@ SumOmniEval/
 │   │   ├── era3_logic_checkers.py # NLI, FactCC, FactChecker
 │   │   └── era3_llm_judge.py      # G-Eval, DAG
 │   └── utils/
-│       └── helpers.py             # Shared utilities
+│       ├── helpers.py             # Shared utilities
+│       └── data_loader.py         # Sample data loading
+│
+├── examples/                       # Example dataset files
+│   ├── example_dataset.csv        # CSV dataset (3 rows)
+│   ├── example_dataset.json       # JSON dataset (3 rows)
+│   └── example_dataset.xlsx       # Excel dataset (3 rows)
 │
 ├── tests/                          # All test scripts
 │   ├── README.md                  # Testing guide
@@ -156,6 +168,7 @@ SumOmniEval/
 └── docs/                           # Documentation
     ├── METRICS.md                 # Detailed metric explanations
     ├── SETUP.md                   # Installation & troubleshooting
+    ├── FILE_FORMATS.md            # File upload format guide
     └── CHANGELOG.md               # Version history
 ```
 

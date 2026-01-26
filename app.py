@@ -60,6 +60,91 @@ def initialize_session_state():
         st.session_state.last_sample = None
     if 'selected_model' not in st.session_state:
         st.session_state.selected_model = 'meta-llama/Llama-3.3-70B-Instruct'
+    if 'uploaded_documents' not in st.session_state:
+        st.session_state.uploaded_documents = []
+    if 'uploaded_dataset' not in st.session_state:
+        st.session_state.uploaded_dataset = None
+    if 'dataset_columns' not in st.session_state:
+        st.session_state.dataset_columns = []
+    if 'source_column' not in st.session_state:
+        st.session_state.source_column = None
+    if 'summary_column' not in st.session_state:
+        st.session_state.summary_column = None
+    if 'dataset_cleared' not in st.session_state:
+        st.session_state.dataset_cleared = False
+    if 'columns_selected' not in st.session_state:
+        st.session_state.columns_selected = False
+    if 'uploader_key' not in st.session_state:
+        st.session_state.uploader_key = 0
+    if 'last_uploader_key' not in st.session_state:
+        st.session_state.last_uploader_key = -1
+
+
+def parse_dataset_file(uploaded_file):
+    """
+    Parse uploaded dataset file into a DataFrame.
+
+    Supports:
+    - CSV: Standard comma-separated values
+    - JSON: Array of objects [{"col1": "val1", "col2": "val2"}, ...]
+    - Excel: .xlsx or .xls files
+    - TSV: Tab-separated values
+
+    Returns:
+        tuple: (DataFrame, filename, error_message)
+        - If successful: (df, filename, None)
+        - If failed: (None, filename, error_message)
+    """
+    import json
+    import pandas as pd
+
+    filename = uploaded_file.name
+    file_extension = filename.split('.')[-1].lower()
+
+    try:
+        # Parse based on file type
+        if file_extension == 'csv':
+            df = pd.read_csv(uploaded_file)
+
+        elif file_extension == 'tsv':
+            df = pd.read_csv(uploaded_file, sep='\t')
+
+        elif file_extension in ['xlsx', 'xls']:
+            df = pd.read_excel(uploaded_file)
+
+        elif file_extension == 'json':
+            content = json.loads(uploaded_file.read().decode('utf-8'))
+
+            # Check if it's an array of objects
+            if isinstance(content, list):
+                df = pd.DataFrame(content)
+            else:
+                return None, filename, "JSON must be an array of objects: [{...}, {...}]"
+
+        else:
+            return None, filename, f"Unsupported file format: {file_extension}. Please use CSV, JSON, Excel, or TSV."
+
+        # Validate: Must have at least 2 columns
+        if len(df.columns) < 2:
+            return None, filename, f"File must have at least 2 columns. Found only {len(df.columns)} column(s)."
+
+        # Validate: Must have at least 1 row
+        if len(df) == 0:
+            return None, filename, "File is empty (no data rows)."
+
+        # Clean up: Remove completely empty columns
+        df = df.dropna(axis=1, how='all')
+
+        # Clean up: Remove completely empty rows
+        df = df.dropna(axis=0, how='all')
+
+        # Reset index
+        df = df.reset_index(drop=True)
+
+        return df, filename, None
+
+    except Exception as e:
+        return None, filename, f"Error parsing file: {str(e)}"
 
 
 def check_metric_availability():
@@ -631,34 +716,214 @@ def main():
     # Sidebar
     st.sidebar.header("⚙️ Configuration")
 
-    # Sample data loader
-    st.sidebar.subheader("📁 Sample Data")
+    # File uploader for dataset
+    st.sidebar.subheader("📤 Upload Your Dataset")
+    uploaded_file = st.sidebar.file_uploader(
+        "Upload CSV, JSON, Excel, or TSV file",
+        type=['csv', 'json', 'xlsx', 'xls', 'tsv'],
+        key=f"dataset_uploader_{st.session_state.uploader_key}",
+        help="Upload a dataset with multiple rows. File must have at least 2 columns.\n"
+             "Supported formats:\n"
+             "• CSV/TSV: Standard tabular format\n"
+             "• JSON: Array of objects [{...}, {...}]\n"
+             "• Excel: .xlsx or .xls files"
+    )
 
-    try:
-        df = load_sample_data()
-        sample_options = [f"Sample {i+1}" for i in range(len(df))]
+    # Process uploaded file
+    if uploaded_file is not None:
+        filename = uploaded_file.name
+        current_uploader_key = st.session_state.uploader_key
 
-        # Use on_change callback to auto-load
-        def on_sample_change():
-            """Callback when sample selection changes."""
-            selected_idx = st.session_state.sample_selector
-            sample = get_sample_by_index(selected_idx)
-            st.session_state.source_text = sample['source']
-            st.session_state.summary_text = sample['summary']
+        # Check if this file is from a new uploader widget (after clear) or a different file
+        is_new_uploader = current_uploader_key != st.session_state.last_uploader_key
+        is_different_file = st.session_state.get('last_uploaded_file') != filename
 
-        selected_sample = st.sidebar.selectbox(
-            "Select a sample to load:",
-            options=range(len(sample_options)),
-            format_func=lambda x: sample_options[x],
-            key="sample_selector",
-            on_change=on_sample_change
+        # Should process if: new uploader widget OR different file OR no dataset loaded
+        should_process = (
+            is_new_uploader or
+            is_different_file or
+            st.session_state.uploaded_dataset is None
         )
 
-        # Show current selection
-        st.sidebar.info(f"📄 Currently: Sample {selected_sample + 1}")
+        if should_process:
+            df, filename, error = parse_dataset_file(uploaded_file)
+
+            if error:
+                st.sidebar.error(f"❌ {error}")
+            else:
+                # Store dataset in session state
+                st.session_state.uploaded_dataset = df
+                st.session_state.dataset_columns = list(df.columns)
+                st.session_state.last_uploaded_file = filename
+                st.session_state.last_uploader_key = current_uploader_key
+                st.session_state.dataset_cleared = False
+                st.sidebar.success(f"✅ Loaded: {filename}")
+                st.sidebar.info(f"📊 {len(df)} rows × {len(df.columns)} columns")
+
+                # Clear text areas when new file is uploaded
+                st.session_state.source_text = ""
+                st.session_state.summary_text = ""
+
+                # Reset column selections when new file is uploaded
+                st.session_state.source_column = None
+                st.session_state.summary_column = None
+                st.session_state.columns_selected = False
+                st.session_state.data_selector = 0  # Reset to placeholder
+        else:
+            # Already processed this file
+            if st.session_state.uploaded_dataset is not None:
+                st.sidebar.success(f"✅ Loaded: {filename}")
+                st.sidebar.info(f"📊 {len(st.session_state.uploaded_dataset)} rows × {len(st.session_state.dataset_columns)} columns")
+
+    # Column selection (only show if dataset is uploaded)
+    if st.session_state.uploaded_dataset is not None and not st.session_state.dataset_cleared:
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("🔧 Map Columns")
+
+        col1, col2 = st.sidebar.columns(2)
+
+        def on_column_change():
+            """Mark that user has selected columns."""
+            if st.session_state.source_column and st.session_state.summary_column:
+                st.session_state.columns_selected = True
+
+        with col1:
+            source_col = st.selectbox(
+                "Source Text Column:",
+                options=st.session_state.dataset_columns,
+                key="source_col_selector",
+                help="Select the column containing the full source documents",
+                on_change=on_column_change
+            )
+            st.session_state.source_column = source_col
+
+        with col2:
+            # Filter out the source column from summary options
+            summary_options = [col for col in st.session_state.dataset_columns if col != source_col]
+            if summary_options:
+                summary_col = st.selectbox(
+                    "Summary Column:",
+                    options=summary_options,
+                    key="summary_col_selector",
+                    help="Select the column containing the summaries",
+                    on_change=on_column_change
+                )
+                st.session_state.summary_column = summary_col
+            else:
+                st.sidebar.warning("⚠️ Need at least 2 columns")
+
+        # Mark columns as selected when both are set
+        if st.session_state.source_column and st.session_state.summary_column:
+            st.session_state.columns_selected = True
+
+        # Show preview of column mapping
+        if st.session_state.source_column and st.session_state.summary_column:
+            st.sidebar.caption(f"✅ Source: `{st.session_state.source_column}`")
+            st.sidebar.caption(f"✅ Summary: `{st.session_state.summary_column}`")
+
+    # Show clear button if dataset is uploaded
+    if st.session_state.uploaded_dataset is not None and not st.session_state.dataset_cleared:
+        if st.sidebar.button("🗑️ Clear Uploaded Dataset"):
+            # Increment uploader key to force new uploader widget
+            st.session_state.uploader_key += 1
+            # Set flag to prevent re-processing the same file
+            st.session_state.dataset_cleared = True
+            # Clear all dataset-related state
+            st.session_state.uploaded_dataset = None
+            st.session_state.dataset_columns = []
+            st.session_state.source_column = None
+            st.session_state.summary_column = None
+            st.session_state.columns_selected = False
+            st.session_state.data_selector = 0  # Reset to first sample
+            # Note: Keep last_uploaded_file so we know not to re-process it
+            # Load first sample data
+            try:
+                sample = get_sample_by_index(0)
+                st.session_state.source_text = sample['source']
+                st.session_state.summary_text = sample['summary']
+            except:
+                pass
+            st.rerun()
+
+    # Data selector
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("📁 Select Data")
+
+    try:
+        # Determine data source
+        if st.session_state.uploaded_dataset is not None and \
+           st.session_state.source_column and st.session_state.summary_column and \
+           st.session_state.columns_selected:
+            # Use uploaded dataset
+            df = st.session_state.uploaded_dataset
+            source_col = st.session_state.source_column
+            summary_col = st.session_state.summary_column
+
+            # Build options list with placeholder
+            all_options = ["-- Select a row --"] + [f"Row {i+1}" for i in range(len(df))]
+
+            # Use on_change callback to load data
+            def on_data_change():
+                """Callback when data selection changes."""
+                selected_idx = st.session_state.data_selector
+                if selected_idx > 0:  # Not the placeholder
+                    row = df.iloc[selected_idx - 1]  # Adjust for placeholder
+                    st.session_state.source_text = str(row[source_col])
+                    st.session_state.summary_text = str(row[summary_col])
+
+            # Determine default index (0 = placeholder)
+            default_idx = st.session_state.get('data_selector', 0)
+            if default_idx >= len(all_options):
+                default_idx = 0
+
+            selected_data = st.sidebar.selectbox(
+                "Choose row to evaluate:",
+                options=range(len(all_options)),
+                format_func=lambda x: all_options[x],
+                index=default_idx,
+                key="data_selector",
+                on_change=on_data_change
+            )
+
+            # Show current selection if a row is selected (not placeholder)
+            if selected_data > 0:
+                st.sidebar.info(f"📄 Currently: {all_options[selected_data]}")
+
+        else:
+            # Use sample data (default)
+            df = load_sample_data()
+            num_samples = len(df)
+
+            # Build options list from sample data
+            all_options = [f"Sample {i+1}" for i in range(num_samples)]
+
+            # Determine default index
+            default_idx = st.session_state.get('data_selector', 0)
+            if default_idx >= len(all_options):
+                default_idx = 0
+
+            # Use on_change callback to auto-load
+            def on_data_change():
+                """Callback when data selection changes."""
+                selected_idx = st.session_state.data_selector
+                sample = get_sample_by_index(selected_idx)
+                st.session_state.source_text = sample['source']
+                st.session_state.summary_text = sample['summary']
+
+            selected_data = st.sidebar.selectbox(
+                "Choose sample to evaluate:",
+                options=range(len(all_options)),
+                format_func=lambda x: all_options[x],
+                index=default_idx,
+                key="data_selector",
+                on_change=on_data_change
+            )
+
+            # Show current selection
+            st.sidebar.info(f"📄 Currently: {all_options[selected_data]}")
 
     except Exception as e:
-        st.sidebar.error(f"Error loading samples: {e}")
+        st.sidebar.error(f"Error loading data: {e}")
 
     # Model selection for LLM-as-a-Judge (if API available)
     if H2OGPTE_AVAILABLE:

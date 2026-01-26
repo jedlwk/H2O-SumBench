@@ -7,6 +7,7 @@
 streamlit==1.40.0
 pandas==2.2.0
 numpy==1.26.4  # CRITICAL: Must be 1.x for pyemd (MoverScore dependency) compatibility
+openpyxl==3.1.2  # Excel file support for dataset uploads
 
 # ============================================================================
 # Deep Learning Stack (Modern, CPU-only)

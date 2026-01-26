@@ -1,0 +1,14 @@
+[
+  {
+    "source": "The quarterly earnings report released today shows that TechCorp exceeded market expectations with a 15% increase in revenue compared to the same quarter last year. The technology sector drove most of the growth, contributing $2.3 billion in additional revenue. Cloud services saw particularly strong performance with a 22% year-over-year increase. However, the retail division remained flat, showing no significant growth. The company's CEO attributed the success to strategic investments in artificial intelligence and cloud infrastructure made over the past 18 months. Operating margins improved by 3 percentage points, reaching 28%. The company also announced plans to expand its workforce by 500 employees in Q4.",
+    "summary": "TechCorp's Q3 earnings beat expectations with 15% revenue growth, driven primarily by the technology sector and cloud services (22% YoY growth). Operating margins improved to 28%, though retail remained flat. The CEO credits AI and cloud investments, with plans to hire 500 employees in Q4."
+  },
+  {
+    "source": "Recent studies in climate science indicate that global temperatures have risen by 1.2°C since pre-industrial times, primarily due to greenhouse gas emissions from human activities. The Arctic region has experienced the most dramatic changes, with ice coverage declining at a rate of 13% per decade. Scientists warn that without immediate action to reduce carbon emissions, the planet could face irreversible damage within the next 30 years. The Paris Agreement aims to limit warming to 1.5°C, but current policies fall short of this target. Renewable energy adoption has increased, but fossil fuels still account for 80% of global energy consumption.",
+    "summary": "Global temperatures have risen 1.2°C since pre-industrial times due to human-caused greenhouse gas emissions. Arctic ice is declining 13% per decade. Scientists warn of irreversible damage within 30 years without emission reductions. Despite increased renewable energy adoption, fossil fuels still dominate at 80% of global consumption."
+  },
+  {
+    "source": "The new smartphone model features a 6.7-inch OLED display with 120Hz refresh rate, making scrolling and gaming incredibly smooth. The device is powered by the latest Snapdragon 8 Gen 3 processor, offering 50% better performance than its predecessor. Camera capabilities include a 200MP main sensor, 50MP ultrawide, and 10MP telephoto with 10x optical zoom. Battery life has been extended to two full days of typical use, thanks to the 5000mAh battery and optimized power management. The phone will be available in three colors: Midnight Black, Arctic Blue, and Desert Gold, starting at $999.",
+    "summary": "New smartphone offers 6.7-inch 120Hz OLED display, Snapdragon 8 Gen 3 processor (50% faster), 200MP triple camera system with 10x optical zoom, and two-day battery life (5000mAh). Available in three colors starting at $999."
+  }
+]

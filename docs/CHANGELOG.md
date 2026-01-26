@@ -4,6 +4,90 @@ All notable changes to this project are documented here.
 
 ---
 
+## [1.1.0] - 2026-01-26
+
+### Added
+
+#### Dataset Upload Feature
+- **Upload Your Own Datasets** - Upload files with multiple rows of data
+  - Support for CSV (`.csv`) - Standard comma-separated format
+  - Support for JSON (`.json`) - Array of objects format
+  - Support for Excel (`.xlsx`, `.xls`) - Standard spreadsheet format
+  - Support for TSV (`.tsv`) - Tab-separated format
+  - Validation: Must have at least 2 columns
+  - Validation: Must have at least 1 data row
+
+#### Column Mapping
+- **Smart Column Selection** - Choose which columns to use after upload
+  - "Source Text Column" dropdown - Select column with full documents
+  - "Summary Column" dropdown - Select column with summaries
+  - Preview selected row before evaluation
+  - Support for any column names (not limited to "report" or "summary")
+
+#### Row Selection
+- **Dataset Row Navigation** - Evaluate multiple document pairs
+  - Dropdown shows placeholder: "-- Select a row --" (no auto-load)
+  - User selects row: "Row 1", "Row 2", "Row 3", etc.
+  - Once dataset uploaded, replaces sample data in dropdown
+  - Selected row data loads into text areas automatically
+  - Easy switching between rows for batch evaluation
+
+#### Documentation
+- **docs/FILE_FORMATS.md** - Complete dataset upload guide
+  - Format specifications for CSV, JSON, Excel, TSV
+  - Column selection workflow
+  - Validation rules and error messages
+  - Example datasets and workflow tutorial
+
+#### Example Datasets
+- **examples/example_dataset.csv** - CSV with 3 sample rows
+- **examples/example_dataset.json** - JSON array with 3 sample rows
+- **examples/example_dataset.xlsx** - Excel workbook with 3 sample rows
+
+### Changed
+
+#### UI Improvements
+- Renamed "Sample Data" to "Upload Your Dataset" in sidebar
+- Data selector dropdown shows uploaded rows or sample data
+- Added column mapping dropdowns after file upload
+- Added "Clear Uploaded Dataset" button
+- Shows dataset info: "X rows × Y columns"
+- Text areas cleared on new file upload (no auto-population)
+- Row selection uses placeholder "-- Select a row --" (no auto-select Row 1)
+
+#### Dependencies
+- Added `openpyxl==3.1.2` for Excel file support
+
+#### Documentation Updates
+- Updated README.md with dataset upload workflow
+- Updated project structure to show example datasets
+- Updated FILE_FORMATS.md with placeholder dropdown workflow
+- Removed old single-document example files
+
+### Fixed
+
+#### Clear Dataset Functionality
+- **File uploader now clears properly** - Filename disappears after clicking clear
+  - Used dynamic uploader key (`uploader_key_{counter}`) to force new widget
+  - Increments counter on clear to create fresh uploader
+- **Dataset stays cleared after clicking sample data** - No longer reverts to uploaded file
+  - Tracks which uploader widget file came from
+  - Prevents re-processing same file after clear
+- **Re-uploading after clear works correctly** - Can upload same or different file
+  - Detects new uploader widget vs new filename
+  - Processes file correctly even if same filename as cleared file
+
+#### Column Selection & Row Loading
+- **Text areas cleared on new upload** - Source and Summary start empty
+- **Row 1 no longer auto-selected** - User must explicitly choose row
+  - Dropdown starts with "-- Select a row --" placeholder
+  - Data only loads when user selects a row
+- **Columns must be selected before row selection appears** - Clearer workflow
+  - Column selection shown first
+  - Data selector only appears after both columns mapped
+
+---
+
 ## [1.0.0] - 2026-01-25
 
 ### Major Release: 15 Metrics Complete
