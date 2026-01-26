@@ -250,7 +250,13 @@ def display_results(results: Dict[str, Dict[str, Any]]):
 
     Args:
         results: Dictionary containing metric results by era.
+
+    Note: Uses st.session_state.source_text to check for token limit warnings.
     """
+    # Check if source text exceeds 400 words (for token limit warnings)
+    source_text = st.session_state.get('source_text', '')
+    word_count = len(source_text.split())
+    show_token_warning = word_count > 400
     st.markdown("---")
     st.header("📊 Evaluation Results")
 
@@ -381,7 +387,8 @@ def display_results(results: Dict[str, Dict[str, Any]]):
                 st.caption("ℹ️ Normalized: higher = better coverage")
                 st.markdown(f"- F1: {format_score_display(bert_scores.get('f1', 0), 'bertscore')}", unsafe_allow_html=True)
                 st.caption("ℹ️ Normalized: higher = better semantic match")
-                st.warning("⚠️ **Token Limit**: Source documents >400 words are truncated to first ~400 words")
+                if show_token_warning:
+                    st.warning(f"⚠️ **Token Limit**: Your source text is {word_count} words, exceeding the 400-word limit. It was truncated to ~400 words for this metric.")
             else:
                 st.error(f"Error: {bert_scores['error']}")
 
@@ -391,7 +398,8 @@ def display_results(results: Dict[str, Dict[str, Any]]):
             if "error" not in mover_score:
                 st.markdown(f"- Score: {format_score_display(mover_score.get('moverscore', 0))}", unsafe_allow_html=True)
                 st.caption("ℹ️ Normalized: higher = better semantic alignment")
-                st.warning("⚠️ **Token Limit**: Source documents >400 words are truncated to first ~400 words")
+                if show_token_warning:
+                    st.warning(f"⚠️ **Token Limit**: Your source text is {word_count} words, exceeding the 400-word limit. It was truncated to ~400 words for this metric.")
             else:
                 st.error(f"Error: {mover_score['error']}")
 
@@ -412,7 +420,7 @@ def display_results(results: Dict[str, Dict[str, Any]]):
             - **NLI (Natural Language Inference)**: Uses DeBERTa-v3 to determine if the source logically supports
               the summary. Asks: "Does Sentence A logically prove Sentence B?"
             - **FactCC**: A BERT model trained specifically to flag text as "Consistent" or "Inconsistent."
-            - **FactChecker**: Uses a 70B LLM to check every claim and identify specific unsupported statements.
+            - **FactChecker**: Uses an LLM to check every claim and identify specific unsupported statements.
 
             **Pros & Cons**:
             - ✅ The Gold Standard for Hallucination Detection (Faithfulness)
@@ -474,7 +482,8 @@ def display_results(results: Dict[str, Dict[str, Any]]):
                     if readable_label in verdict_explanations:
                         st.caption(f"ℹ️ {verdict_explanations[readable_label]}")
 
-                    st.warning("⚠️ **Token Limit**: Source documents >400 words are truncated to first ~400 words")
+                    if show_token_warning:
+                        st.warning(f"⚠️ **Token Limit**: Your source text is {word_count} words, exceeding the 400-word limit. It was truncated to ~400 words for this metric.")
                 else:
                     st.error(f"Error: {nli_score['error']}")
 
@@ -494,13 +503,14 @@ def display_results(results: Dict[str, Dict[str, Any]]):
                         st.markdown(f"**Score:** {format_score_display(score, 'general', 1.0)}", unsafe_allow_html=True)
                         st.caption("ℹ️ Normalized: higher = more factually consistent")
                         st.markdown(f"**Label:** {label}")
-                        st.warning("⚠️ **Token Limit**: Source documents >400 words are truncated to first ~400 words")
+                        if show_token_warning:
+                            st.warning(f"⚠️ **Token Limit**: Your source text is {word_count} words, exceeding the 400-word limit. It was truncated to ~400 words for this metric.")
                     else:
                         st.error(f"Error: {factcc_score.get('error')}")
                 elif "FactChecker" in results["era3"]:
                     # FactChecker results (if enabled)
                     st.markdown("**FactChecker - LLM Fact Verification**")
-                    st.caption("**What it does:** Uses a 70B LLM to verify each claim in the summary against the source document")
+                    st.caption("**What it does:** Uses an LLM to verify each claim in the summary against the source document")
                     st.caption("**Testing for:** Identifies factual errors, unsupported claims, or hallucinations with detailed reasoning")
                     st.caption("**Example:** Source: 'Einstein published relativity in 1905' → Good: '1905' (1.00) | Bad: '1915' (0.50)")
 
@@ -522,7 +532,7 @@ def display_results(results: Dict[str, Dict[str, Any]]):
             if "FactCC" in results["era3"] and "FactChecker" in results["era3"]:
                 st.markdown("---")
                 st.markdown("**FactChecker - LLM Fact Verification**")
-                st.caption("**What it does:** Uses a 70B LLM to verify each claim in the summary against the source document")
+                st.caption("**What it does:** Uses an LLM to verify each claim in the summary against the source document")
                 st.caption("**Testing for:** Identifies factual errors, unsupported claims, or hallucinations with detailed reasoning")
                 st.caption("**Example:** Source: 'Einstein published relativity in 1905' → Good: '1905' (1.00) | Bad: '1915' (0.50)")
 
