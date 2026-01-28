@@ -48,6 +48,8 @@ def initialize_session_state():
     # Start with empty text areas - user must select a row
     if 'source_text' not in st.session_state:
         st.session_state.source_text = ""
+    if 'reference_text' not in st.session_state:
+        st.session_state.reference_text = ""
     if 'summary_text' not in st.session_state:
         st.session_state.summary_text = ""
 
@@ -65,6 +67,8 @@ def initialize_session_state():
         st.session_state.dataset_columns = []
     if 'source_column' not in st.session_state:
         st.session_state.source_column = None
+    if 'reference_column' not in st.session_state:
+        st.session_state.reference_column = None
     if 'summary_column' not in st.session_state:
         st.session_state.summary_column = None
     if 'dataset_cleared' not in st.session_state:
@@ -221,7 +225,9 @@ def format_score_display(score: float, metric_type: str = "general", max_score: 
         "general": (0.7, 0.4),
         "bertscore": (0.75, 0.65),  # Changed from 0.85, 0.75
         "bleu": (0.3, 0.15),
-        "geval": (8.0, 5.0)  # For 1-10 scale
+        "geval": (8.0, 5.0),        # For 1-10 scale
+        "prometheus": (4.0, 2.5)    # For 1-5 scale
+
     }
 
     good_threshold, poor_threshold = thresholds.get(
@@ -240,6 +246,15 @@ def format_score_display(score: float, metric_type: str = "general", max_score: 
             color = "#dc3545"  # Red
         # No decimals for AI Simulator scores
         return f'<span style="color: {color}; font-weight: bold;">{int(round(raw_score))}/10</span>'
+    elif max_score == 5.0:
+        raw_score = score
+        if raw_score >= good_threshold:
+            color = "#28a745"  # Green
+        elif raw_score >= poor_threshold:
+            color = "#ffc107"  # Yellow
+        else:
+            color = "#dc3545"  # Red
+        return f'<span style="color: {color}; font-weight: bold;">{int(round(raw_score))}/5</span>'
     else:
         # Standard 0-1 scale
         if score >= good_threshold:
@@ -689,15 +704,38 @@ def display_results(results: Dict[str, Dict[str, Any]]):
                             st.write(dag_result['explanation'])
                 else:
                     st.warning(f"⚠️ {dag_result.get('error', 'No result')}")
+            
+            # Prometheus results if enabled
+            if "prometheus" in results["era3b"]:
+                st.markdown("---")
+                st.markdown("**Prometheus - Reference-Based Evaluation**")
+                st.caption("**What it does:** Evaluates summary quality against reference using LLM reasoning")
+                st.caption("**Testing for:** How well does the summary match the reference?")
+                st.caption("**Example:** Reference-based holistic quality assessment (1-5 scale)")
+
+                prom_result = results["era3b"].get("prometheus", {})
+                if "error" not in prom_result and prom_result.get('score') is not None:
+                    raw_score = prom_result.get('raw_score', prom_result['score'])
+                    st.markdown(f"**Score:** {format_score_display(raw_score, 'prometheus', 5.0)}", unsafe_allow_html=True)
+                    st.caption("ℹ️ Normalized: 5/5 = excellent quality, 1/5 = poor quality")
+                    if prom_result.get('explanation'):
+                        explanation_text = prom_result.get('explanation', 'N/A')
+                        if len(explanation_text) > 100:
+                            with st.expander("💬 Explanation"):
+                                st.write(explanation_text)
+                        else:
+                            st.caption(f"💬 {explanation_text}")
+                else:
+                    st.warning(f"⚠️ {prom_result.get('error', 'No result')}")
 
         # Batch evaluation button (show after DAG results if dataset uploaded)
         # Batch evaluation button (show after DAG results if dataset uploaded)
         if st.session_state.uploaded_dataset is not None and \
-           st.session_state.source_column and st.session_state.summary_column and \
+           st.session_state.source_column and st.session_state.summary_column and st.session_state.reference_column and \
            st.session_state.columns_selected and H2OGPTE_AVAILABLE:
             st.markdown("---")
             st.subheader("📊 Batch Evaluation")
-            st.caption("Evaluate the entire dataset with API metrics (FactChecker, G-Eval, DAG)")
+            st.caption("Evaluate the entire dataset with API metrics (FactChecker, G-Eval, DAG, Prometheus)")
 
             # Use callback to set state immediately when button is clicked
             def start_batch_evaluation_main():
@@ -714,14 +752,15 @@ def display_results(results: Dict[str, Dict[str, Any]]):
                 )
 
 
-def batch_evaluate_dataset(df: pd.DataFrame, source_col: str, summary_col: str, model_name: str, progress_bar, status_text, preview_placeholder=None):
+def batch_evaluate_dataset(df: pd.DataFrame, source_col: str, reference_col: str, summary_col: str, model_name: str, progress_bar, status_text, preview_placeholder=None):
     """
     Evaluate entire dataset with API metrics only (no token limits).
 
     Args:
-        df: DataFrame with source and summary columns
+        df: DataFrame with source, reference, and summary columns
         source_col: Name of source text column
-        summary_col: Name of summary text column
+        reference_col: Name of reference summary column
+        summary_col: Name of generated summary column
         model_name: LLM model to use for evaluation
         progress_bar: Streamlit progress bar widget
         status_text: Streamlit empty text widget for status updates
@@ -732,12 +771,13 @@ def batch_evaluate_dataset(df: pd.DataFrame, source_col: str, summary_col: str, 
     """
     results_df = df.copy()
 
-    # Initialize result columns (5 metrics: 4 G-Eval dimensions + DAG)
+    # Initialize result columns (6 metrics: 4 G-Eval dimensions + DAG + Prometheus)
     results_df['geval_faithfulness'] = None
     results_df['geval_coherence'] = None
     results_df['geval_relevance'] = None
     results_df['geval_fluency'] = None
     results_df['dag_score'] = None
+    results_df['prometheus_score'] = None
 
     # Create LLM Judge evaluator
     evaluator = LLMJudgeEvaluator(model_name=model_name)
@@ -747,6 +787,7 @@ def batch_evaluate_dataset(df: pd.DataFrame, source_col: str, summary_col: str, 
     for row_num, (idx, row) in enumerate(df.iterrows(), start=1):
         source_text = str(row[source_col])
         summary_text = str(row[summary_col])
+        reference_text = str(row[reference_col])
 
         # Update progress
         progress_bar.progress(row_num / total_rows)
@@ -773,6 +814,11 @@ def batch_evaluate_dataset(df: pd.DataFrame, source_col: str, summary_col: str, 
             dag_result = evaluator.evaluate_dag(source_text, summary_text)
             results_df.at[idx, 'dag_score'] = dag_result.get('raw_score', None)
 
+            # Prometheus
+            prometheus_result = evaluator.evaluate_prometheus(source_text, summary_text, reference_text)
+            results_df.at[idx, 'prometheus_score'] = prometheus_result.get('score', None)
+
+
         except Exception as e:
             st.error(f"Error processing row {row_num}: {str(e)}")
             # Fill with None on error
@@ -781,6 +827,7 @@ def batch_evaluate_dataset(df: pd.DataFrame, source_col: str, summary_col: str, 
             results_df.at[idx, 'geval_relevance'] = None
             results_df.at[idx, 'geval_fluency'] = None
             results_df.at[idx, 'dag_score'] = None
+            results_df.at[idx, 'prometheus_score'] = None
 
         # Update live preview for first 10 rows
         if preview_placeholder is not None and row_num <= 10:
@@ -847,6 +894,7 @@ def main():
             # Get dataset info
             df = st.session_state.uploaded_dataset
             source_col = st.session_state.source_column
+            reference_col = st.session_state.reference_column
             summary_col = st.session_state.summary_column
             model_name = st.session_state.selected_model
 
@@ -861,7 +909,7 @@ def main():
 
             # Show evaluation info
             num_rows = len(df)
-            st.info(f"🔄 Evaluating {num_rows} rows with API metrics (G-Eval, DAG)...")
+            st.info(f"🔄 Evaluating {num_rows} rows with API metrics (G-Eval, DAG, Prometheus)...")
             st.caption(f"Using model: **{model_name.split('/')[-1]}**")
             st.caption("This may take several minutes depending on dataset size...")
             st.markdown("")  # spacing
@@ -878,7 +926,7 @@ def main():
             preview_placeholder = st.empty()
 
             # Run batch evaluation with live preview
-            results_df = batch_evaluate_dataset(df, source_col, summary_col, model_name, progress_bar, status_text, preview_placeholder)
+            results_df = batch_evaluate_dataset(df, source_col, reference_col, summary_col, model_name, progress_bar, status_text, preview_placeholder)
 
             # Store results
             st.session_state.batch_results = results_df
@@ -980,10 +1028,12 @@ def main():
 
                 # Clear text areas when new file is uploaded
                 st.session_state.source_text = ""
+                st.session_state.reference_text = ""
                 st.session_state.summary_text = ""
 
                 # Reset column selections when new file is uploaded
                 st.session_state.source_column = None
+                st.session_state.reference_column = None
                 st.session_state.summary_column = None
                 st.session_state.columns_selected = False
                 st.session_state.data_selector = 0  # Reset to placeholder
@@ -1002,7 +1052,7 @@ def main():
 
         def on_column_change():
             """Mark that user has selected columns."""
-            if st.session_state.source_column and st.session_state.summary_column:
+            if st.session_state.source_column and st.session_state.summary_column and st.session_state.reference_column:
                 st.session_state.columns_selected = True
 
         with col1:
@@ -1029,15 +1079,30 @@ def main():
                 st.session_state.summary_column = summary_col
             else:
                 st.sidebar.warning("⚠️ Need at least 2 columns")
+        
+        # Filter out already selected columns
+        reference_options = [col for col in st.session_state.dataset_columns 
+                            if col != source_col and col != st.session_state.summary_column]
+        if reference_options:
+            reference_col = st.selectbox(
+                "Reference Column:",
+                options=reference_options,
+                key="reference_col_selector",
+                help="Select the column containing the reference summaries",
+                on_change=on_column_change
+            )
+            st.session_state.reference_column = reference_col
+
 
         # Mark columns as selected when both are set
-        if st.session_state.source_column and st.session_state.summary_column:
+        if st.session_state.source_column and st.session_state.summary_column and st.session_state.reference_column:
             st.session_state.columns_selected = True
 
         # Show preview of column mapping
-        if st.session_state.source_column and st.session_state.summary_column:
+        if st.session_state.source_column and st.session_state.summary_column and st.session_state.reference_column:
             st.sidebar.caption(f"✅ Source: `{st.session_state.source_column}`")
             st.sidebar.caption(f"✅ Summary: `{st.session_state.summary_column}`")
+            st.sidebar.caption(f"✅ Reference: `{st.session_state.reference_column}`")
 
     # Show clear button if dataset is uploaded
     if st.session_state.uploaded_dataset is not None and not st.session_state.dataset_cleared:
@@ -1050,6 +1115,7 @@ def main():
             st.session_state.uploaded_dataset = None
             st.session_state.dataset_columns = []
             st.session_state.source_column = None
+            st.session_state.reference_column = None
             st.session_state.summary_column = None
             st.session_state.columns_selected = False
             st.session_state.data_selector = 0  # Reset to first sample
@@ -1058,6 +1124,7 @@ def main():
             try:
                 sample = get_sample_by_index(0)
                 st.session_state.source_text = sample['source']
+                st.session_state.reference_text = sample.get('reference', '')
                 st.session_state.summary_text = sample['summary']
             except:
                 pass
@@ -1070,11 +1137,12 @@ def main():
     try:
         # Determine data source
         if st.session_state.uploaded_dataset is not None and \
-           st.session_state.source_column and st.session_state.summary_column and \
-           st.session_state.columns_selected:
+            st.session_state.source_column and st.session_state.summary_column and st.session_state.reference_column and \
+            st.session_state.columns_selected:
             # Use uploaded dataset
             df = st.session_state.uploaded_dataset
             source_col = st.session_state.source_column
+            reference_col = st.session_state.reference_column
             summary_col = st.session_state.summary_column
 
             # Build options list with placeholder
@@ -1087,6 +1155,7 @@ def main():
                 if selected_idx > 0:  # Not the placeholder
                     row = df.iloc[selected_idx - 1]  # Adjust for placeholder
                     st.session_state.source_text = str(row[source_col])
+                    st.session_state.reference_text = str(row[reference_col])
                     st.session_state.summary_text = str(row[summary_col])
 
             # Determine default index (0 = placeholder)
@@ -1127,6 +1196,7 @@ def main():
                 if selected_idx > 0:  # Not the placeholder
                     sample = get_sample_by_index(selected_idx - 1)  # Adjust for placeholder
                     st.session_state.source_text = sample['source']
+                    st.session_state.reference_text = sample.get('reference', '')
                     st.session_state.summary_text = sample['summary']
 
             selected_data = st.sidebar.selectbox(
@@ -1147,11 +1217,11 @@ def main():
 
     # Batch evaluation button (only show if dataset uploaded and API available)
     if st.session_state.uploaded_dataset is not None and \
-       st.session_state.source_column and st.session_state.summary_column and \
-       st.session_state.columns_selected and H2OGPTE_AVAILABLE:
+        st.session_state.source_column and st.session_state.summary_column and st.session_state.reference_column and \
+        st.session_state.columns_selected and H2OGPTE_AVAILABLE:
         st.sidebar.markdown("---")
         st.sidebar.subheader("📊 Batch Evaluation")
-        st.sidebar.caption("Evaluate entire dataset with API metrics (FactChecker, G-Eval, DAG)")
+        st.sidebar.caption("Evaluate entire dataset with API metrics (FactChecker, G-Eval, DAG, Prometheus)")
 
         # Use callback to set state immediately when button is clicked
         def start_batch_evaluation():
@@ -1181,7 +1251,7 @@ def main():
             "Select LLM Model:",
             options=available_models,
             index=0,  # Default to Llama-3.3-70B
-            help="Choose the LLM model for API metrics (FactChecker, G-Eval, DAG)"
+            help="Choose the LLM model for API metrics (FactChecker, G-Eval, DAG, Prometheus)"
         )
         st.session_state.selected_model = selected_model
         st.sidebar.caption(f"✅ Using: {selected_model.split('/')[-1]}")
@@ -1194,11 +1264,12 @@ def main():
     use_factchecker = available['era3'] and H2OGPTE_AVAILABLE  # Use if both available
     run_era3b = H2OGPTE_AVAILABLE  # Run if API configured
     use_dag = H2OGPTE_AVAILABLE  # Use DAG if API configured
+    use_prometheus = H2OGPTE_AVAILABLE  # Use Prometheus if API configured
 
     # Main content
     st.header("📝 Input Texts")
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
 
     with col1:
         st.subheader("Source Text")
@@ -1206,10 +1277,19 @@ def main():
             "Enter the original source document:",
             value=st.session_state.source_text,
             height=300,
-            help="The reference text to compare against"
+            help="The source text to summarize"
         )
 
     with col2:
+        st.subheader("Reference Summary")
+        reference_text = st.text_area(
+            "Enter the reference summary:",
+            value=st.session_state.reference_text,
+            height=300,
+            help="The reference summary"
+        )
+    
+    with col3: 
         st.subheader("Summary")
         summary_text = st.text_area(
             "Enter the generated summary:",
@@ -1220,6 +1300,7 @@ def main():
 
     # Update session state with current text area values
     st.session_state.source_text = source_text
+    st.session_state.reference_text = reference_text
     st.session_state.summary_text = summary_text
 
     # Evaluation button
@@ -1280,6 +1361,8 @@ def main():
                     spinner_text = f"Running Era 3 AI Simulators (G-Eval"
                     if use_dag:
                         spinner_text += " + DAG"
+                    if use_prometheus:
+                        spinner_text += " + Prometheus"
                     spinner_text += f") using {st.session_state.selected_model.split('/')[-1]}..."
 
                     with st.spinner(spinner_text):
@@ -1287,9 +1370,11 @@ def main():
                             evaluator = LLMJudgeEvaluator(model_name=st.session_state.selected_model)
                             results["era3b"] = evaluator.evaluate_all(
                                 source_text,
+                                reference_text,
                                 summary_text,
                                 timeout=90,
-                                include_dag=use_dag
+                                include_dag=use_dag,
+                                include_prometheus=use_prometheus
                             )
                         except Exception as e:
                             results["era3b"] = {"error": str(e)}

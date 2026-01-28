@@ -99,6 +99,10 @@ Result: 15 metrics, 6 API calls
 **Decision Tree:**
 - **DAG** (DeepEval): Step-by-step evaluation (factual → completeness → clarity)
 
+**Prometheus:**
+- **Absolute Grading**: Direct assessment of a single response on a 1-5 scale
+- **Relative Grading** (Not Implemented): Pairwise comparison to determine which of two responses is superior
+
 ---
 
 ## Using the Application
