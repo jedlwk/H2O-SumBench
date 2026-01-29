@@ -584,8 +584,8 @@ def display_results(results: Dict[str, Dict[str, Any]]):
                 else:
                     st.warning("AlignScore unavailable")
             with col2:
-                st.markdown("**Unified Alignment Model** — *State-of-the-art factual consistency*")
-                st.caption("Trained on 7 different NLP tasks. Currently the most reliable single metric for factual accuracy.")
+                st.markdown("**Unified Alignment Model** ⭐ — *State-of-the-art factual consistency*")
+                st.caption("⭐ **Recommended** — Trained on 7 different NLP tasks. Currently the most reliable single metric for factual accuracy.")
 
         # Coverage Score (NER overlap)
         if "Coverage" in faith_results:
@@ -614,9 +614,15 @@ def display_results(results: Dict[str, Dict[str, Any]]):
         if avg_faith >= 0.7:
             st.success(f"✅ **Faithfulness Assessment:** The summary appears well-supported by the source (avg: {avg_faith:.0%})")
         elif avg_faith >= 0.4:
-            st.warning(f"⚠️ **Faithfulness Assessment:** Some claims may need verification (avg: {avg_faith:.0%})")
+            truncation_note = ""
+            if show_token_warning:
+                truncation_note = f"\n\n**Note:** Your source text ({word_count:,} words) exceeds the ~400 word limit for these models. The faithfulness metrics only evaluated the first ~400 words of the source, which may explain lower scores if key content appears later in the document."
+            st.warning(f"⚠️ **Faithfulness Assessment:** Some claims may need verification (avg: {avg_faith:.0%}){truncation_note}")
         else:
-            st.error(f"❌ **Faithfulness Assessment:** Review carefully for potential errors (avg: {avg_faith:.0%})")
+            truncation_note = ""
+            if show_token_warning:
+                truncation_note = f"\n\n**Note:** Your source text ({word_count:,} words) exceeds the ~400 word limit for these models. The faithfulness metrics only evaluated the first ~400 words of the source, which may explain lower scores if key content appears later in the document."
+            st.error(f"❌ **Faithfulness Assessment:** Review carefully for potential errors (avg: {avg_faith:.0%}){truncation_note}")
 
     # ─────────────────────────────────────────────────────────────────────────
     # COMPLETENESS (Substance) - Key points captured
@@ -650,8 +656,8 @@ def display_results(results: Dict[str, Dict[str, Any]]):
                     else:
                         st.warning(f"⚠️ {sc_result.get('error', 'No result')}")
                 with col2:
-                    st.markdown("**Sentence-Level Coverage** — *How many source sentences are represented?*")
-                    st.caption("Compares each source sentence to the summary using embeddings. Counts how many source sentences have a similar match (>0.7 similarity) in the summary.")
+                    st.markdown("**Sentence-Level Coverage** ⭐ — *How many source sentences are represented?*")
+                    st.caption("⭐ **Recommended** — Compares each source sentence to the summary using embeddings. Counts how many source sentences have a similar match (>0.7 similarity) in the summary.")
 
             # BERTScore Recall
             if "BERTScoreRecall" in local_comp:
@@ -685,7 +691,7 @@ def display_results(results: Dict[str, Dict[str, Any]]):
                 with col2:
                     st.markdown("**Main Points Check** — *Are the important points from the source included?*")
                     if rel_result.get('explanation'):
-                        st.caption(f"💬 {rel_result['explanation'][:120]}...")
+                        st.caption(f"💬 {rel_result['explanation']}")
 
                 # G-Eval: Coherence
                 col1, col2 = st.columns([1, 2])
@@ -748,50 +754,6 @@ def display_results(results: Dict[str, Dict[str, Any]]):
                     - Below 5: Needs improvement
                     """)
 
-                # DAG results
-                if "dag" in comp_results:
-                    st.markdown("---")
-                    dag_result = comp_results.get("dag", {})
-                    col1, col2 = st.columns([1, 2])
-                    with col1:
-                        if "error" not in dag_result and dag_result.get('score') is not None:
-                            raw_score = dag_result.get('raw_score', 0)
-                            color = "#28a745" if raw_score >= 5 else "#ffc107" if raw_score >= 3 else "#dc3545"
-                            st.markdown(f"**DAG Score:** <span style='color: {color}; font-weight: bold;'>{raw_score}/6</span>", unsafe_allow_html=True)
-                            step1 = dag_result.get('step1_factual', 'N/A')
-                            step2 = dag_result.get('step2_completeness', 'N/A')
-                            step3 = dag_result.get('step3_clarity', 'N/A')
-                            st.caption(f"Factual: {step1}/2 | Complete: {step2}/2 | Clear: {step3}/2")
-                    with col2:
-                        st.markdown("**Decision Tree** — *A 3-step checklist: Is it factual? Complete? Clear?*")
-                        st.caption("Step 1: Are facts accurate? Step 2: Are key points included? Step 3: Is it readable?")
-
-                    with st.expander("💡 What is DAG?"):
-                        st.markdown("""
-                        **DAG** evaluates summaries like a decision tree with 3 checkpoints:
-
-                        | Step | Question | Points |
-                        |------|----------|--------|
-                        | 1. Factual | "Does it only state facts from the source?" | 0-2 |
-                        | 2. Complete | "Are the main points included?" | 0-2 |
-                        | 3. Clear | "Is it easy to understand?" | 0-2 |
-
-                        **Scoring:** 6/6 = Perfect | 4-5 = Good | 2-3 = Issues | 0-1 = Major problems
-                        """)
-
-                # Prometheus results
-                if "prometheus" in comp_results:
-                    st.markdown("---")
-                    prom_result = comp_results.get("prometheus", {})
-                    col1, col2 = st.columns([1, 2])
-                    with col1:
-                        if "error" not in prom_result and prom_result.get('score') is not None:
-                            raw_score = prom_result.get('raw_score', prom_result['score'])
-                            st.markdown(f"**Prometheus:** {format_score_display(raw_score, 'prometheus', 5.0)}", unsafe_allow_html=True)
-                    with col2:
-                        st.markdown("**LLM Judge** — *An AI that grades summaries like a teacher (1-5 scale)*")
-                        st.caption("5 = Excellent | 4 = Good | 3 = Acceptable | 2 = Poor | 1 = Very Poor")
-
         # Completeness Assessment Summary
         if has_completeness_llm and "error" not in results.get("completeness", {}):
             comp = results["completeness"]
@@ -846,6 +808,87 @@ def display_results(results: Dict[str, Dict[str, Any]]):
             - Low coverage + High quality = **Concise, focused summary** (often acceptable)
             - High coverage + Low quality = **Verbose, but may have issues** (needs review)
             """)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # HOLISTIC ASSESSMENT - Metrics that evaluate both faithfulness AND completeness
+    # ─────────────────────────────────────────────────────────────────────────
+
+    has_holistic = "completeness" in results and results["completeness"]
+    if has_holistic:
+        comp_results = results["completeness"]
+        has_dag = "dag" in comp_results and "error" not in comp_results.get("dag", {})
+        has_prometheus = "prometheus" in comp_results and "error" not in comp_results.get("prometheus", {})
+
+        if has_dag or has_prometheus:
+            st.markdown("---")
+            st.markdown("### 🔄 Holistic Assessment — *End-to-end quality evaluation*")
+            st.markdown("""
+            > **Why separate?** These metrics evaluate **both** faithfulness and completeness together,
+            > giving you a single score that considers accuracy, coverage, and clarity as one unit.
+            """)
+
+            # DAG results
+            if has_dag:
+                dag_result = comp_results.get("dag", {})
+                col1, col2 = st.columns([1, 2])
+                with col1:
+                    if dag_result.get('score') is not None:
+                        raw_score = dag_result.get('raw_score', 0)
+                        color = "#28a745" if raw_score >= 5 else "#ffc107" if raw_score >= 3 else "#dc3545"
+                        st.markdown(f"**DAG Score:** <span style='color: {color}; font-weight: bold;'>{raw_score}/6</span>", unsafe_allow_html=True)
+                        step1 = dag_result.get('step1_factual', 'N/A')
+                        step2 = dag_result.get('step2_completeness', 'N/A')
+                        step3 = dag_result.get('step3_clarity', 'N/A')
+                        st.caption(f"Factual: {step1}/2 | Complete: {step2}/2 | Clear: {step3}/2")
+                with col2:
+                    st.markdown("**Decision Tree** ⭐ — *A 3-step checklist: Is it factual? Complete? Clear?*")
+                    st.caption("⭐ **Recommended** — Combines factual accuracy (Step 1), key point coverage (Step 2), and clarity (Step 3) into one structured evaluation.")
+
+                with st.expander("💡 What is DAG?"):
+                    st.markdown("""
+                    **DAG** evaluates summaries like a decision tree with 3 checkpoints:
+
+                    | Step | Question | Points |
+                    |------|----------|--------|
+                    | 1. Factual | "Does it only state facts from the source?" | 0-2 |
+                    | 2. Complete | "Are the main points included?" | 0-2 |
+                    | 3. Clear | "Is it easy to understand?" | 0-2 |
+
+                    **Scoring:** 6/6 = Perfect | 4-5 = Good | 2-3 = Issues | 0-1 = Major problems
+                    """)
+
+            # Prometheus results
+            if has_prometheus:
+                st.markdown("---")
+                prom_result = comp_results.get("prometheus", {})
+                col1, col2 = st.columns([1, 2])
+                with col1:
+                    if prom_result.get('score') is not None:
+                        raw_score = prom_result.get('raw_score', prom_result['score'])
+                        st.markdown(f"**Prometheus:** {format_score_display(raw_score, 'prometheus', 5.0)}", unsafe_allow_html=True)
+                with col2:
+                    st.markdown("**LLM Judge** ⭐ — *An AI that grades summaries like a teacher (1-5 scale)*")
+                    st.caption("⭐ **Recommended** — Holistic quality assessment considering all aspects. 5 = Excellent | 4 = Good | 3 = Acceptable | 2 = Poor | 1 = Very Poor")
+
+            # Holistic Assessment Summary
+            st.markdown("---")
+            summary_scores = []
+            if has_dag and dag_result.get('raw_score') is not None:
+                summary_scores.append(('DAG', dag_result['raw_score'], 6))
+            if has_prometheus and prom_result.get('raw_score') is not None:
+                summary_scores.append(('Prometheus', prom_result['raw_score'], 5))
+
+            if summary_scores:
+                # Calculate weighted average
+                total_weighted = sum(s[1]/s[2] for s in summary_scores)
+                avg_holistic = total_weighted / len(summary_scores)
+
+                if avg_holistic >= 0.75:
+                    st.success(f"✅ **Holistic Assessment:** The summary scores well across all dimensions (accuracy, coverage, clarity)")
+                elif avg_holistic >= 0.5:
+                    st.warning(f"⚠️ **Holistic Assessment:** The summary has room for improvement in some areas")
+                else:
+                    st.error(f"❌ **Holistic Assessment:** The summary may need significant revision")
 
     # ═══════════════════════════════════════════════════════════════════════════
     # STAGE 2: GENERATED vs. REFERENCE SUMMARY (CONFORMANCE)
