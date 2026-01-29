@@ -26,19 +26,35 @@ def compute_semantic_coverage(
     threshold: float = 0.7
 ) -> Dict:
     """
-    Compute Semantic Coverage using sentence embeddings.
+    Calculate what percentage of source sentences are semantically represented in the summary.
 
-    Measures how well summary sentences semantically cover key source sentences.
-    Uses sentence-transformers to compute pairwise similarity.
+    This metric answers: "How many of the source's key points made it into the summary?"
+    Compares sentence embeddings to find semantic matches. High score (>0.7) means most
+    source sentences have a similar meaning in the summary. Low score means the summary
+    misses important information.
+
+    Use this when: You want to check if the summary is complete and captures all key points.
 
     Args:
-        source: The original source text.
-        summary: The generated summary.
-        model_name: Sentence transformer model (default: all-MiniLM-L6-v2, ~80MB).
-        threshold: Similarity threshold to consider a sentence "covered" (default: 0.7).
+        source (str): Original source document text to summarize
+        summary (str): Generated summary text to evaluate
+        model_name (str, optional): Sentence embedding model name. Default "all-MiniLM-L6-v2" (~80MB)
+        threshold (float, optional): Cosine similarity threshold (0-1) to count a sentence as "covered".
+                                     Default 0.7 means 70% semantic similarity required.
 
     Returns:
-        Dictionary with coverage score and details.
+        Dict: Result dictionary with keys:
+            - score (float): Coverage ratio from 0.0 to 1.0 (e.g., 0.75 = 75% of source sentences covered)
+            - source_sentences (int): Total number of sentences in source
+            - covered_sentences (int): Number of source sentences found in summary (above threshold)
+            - threshold (float): The similarity threshold used
+            - interpretation (str): Human-readable label like "Good Coverage" or "Low Coverage"
+            - error (str, optional): Error message if computation failed
+
+    Example:
+        >>> result = compute_semantic_coverage("The cat sat. The dog ran.", "A cat was sitting.")
+        >>> result['score']  # e.g., 0.5 (1 out of 2 sentences covered)
+        >>> result['covered_sentences']  # 1
     """
     try:
         from sentence_transformers import SentenceTransformer
@@ -139,18 +155,30 @@ def compute_bertscore_recall_source(
     summary: str
 ) -> Dict:
     """
-    Compute BERTScore Recall comparing Summary against Source.
+    Measure what fraction of the source document's meaning appears in the summary using BERT embeddings.
 
-    This repurposes BERTScore for completeness checking:
-    - High recall = summary captures most of the source content
-    - Low recall = summary misses key information
+    This metric answers: "How much of the source's semantic content did the summary capture?"
+    Uses contextualized BERT embeddings for token-level semantic matching. Recall score close to 1.0
+    means the summary represents most of the source's meaning. Score < 0.3 suggests missing content.
+
+    Use this when: You want to measure semantic completeness (meaning overlap, not word overlap).
 
     Args:
-        source: The original source text.
-        summary: The generated summary.
+        source (str): Original source document text to summarize
+        summary (str): Generated summary text to evaluate
 
     Returns:
-        Dictionary with recall score and interpretation.
+        Dict: Result dictionary with keys:
+            - recall (float): Semantic recall score from 0.0 to 1.0 (higher = more source content captured)
+            - precision (float): How much of summary is relevant to source (0.0 to 1.0)
+            - f1 (float): Harmonic mean of precision and recall (0.0 to 1.0)
+            - interpretation (str): Human-readable label like "High Coverage" or "Low Coverage"
+            - error (str, optional): Error message if bert-score package not installed
+
+    Example:
+        >>> result = compute_bertscore_recall_source("Long source text...", "Short summary...")
+        >>> result['recall']  # e.g., 0.45 (45% of source meaning captured)
+        >>> result['interpretation']  # "Moderate Coverage"
     """
     try:
         from bert_score import score as bert_score
@@ -205,18 +233,30 @@ def compute_bartscore(
     model_name: str = "facebook/bart-large-cnn"
 ) -> Dict:
     """
-    Compute BARTScore for coverage assessment.
+    Calculate how likely a pre-trained summarization model would generate this summary from the source.
 
-    BARTScore measures the log probability of generating the summary
-    given the source. Higher score = better information coverage.
+    This metric answers: "Would a good summarization model produce this summary from this source?"
+    Computes the log-probability that BART would generate the summary given the source.
+    Higher scores (closer to 0) indicate better alignment. Very negative scores indicate poor coverage.
+
+    Use this when: You want a probability-based assessment of summary quality from source.
+    Note: Requires downloading a large model (~1.6GB). Disabled by default.
 
     Args:
-        source: The original source text.
-        summary: The generated summary.
-        model_name: BART model to use (default: bart-large-cnn, ~1.6GB).
+        source (str): Original source document text to summarize
+        summary (str): Generated summary text to evaluate
+        model_name (str, optional): HuggingFace BART model name. Default "facebook/bart-large-cnn" (~1.6GB)
 
     Returns:
-        Dictionary with BARTScore and interpretation.
+        Dict: Result dictionary with keys:
+            - score (float): BARTScore value (negative log-likelihood). Higher is better (e.g., -1.5 is better than -3.0)
+            - interpretation (str): Human-readable label like "Excellent", "Good", "Moderate", or "Poor"
+            - error (str, optional): Error message if transformers package not installed
+
+    Example:
+        >>> result = compute_bartscore("Source document...", "Generated summary...")
+        >>> result['score']  # e.g., -2.1 (moderate quality)
+        >>> result['interpretation']  # "Good"
     """
     try:
         import torch
@@ -295,17 +335,35 @@ def compute_all_completeness_metrics(
     use_bartscore: bool = False  # Disabled by default (large model)
 ) -> Dict[str, Dict]:
     """
-    Compute all Part 1 Completeness metrics.
+    Run all available completeness metrics to check if summary captures key source information.
+
+    This function computes multiple metrics that answer: "Did the summary include all the important
+    information from the source?" Each metric uses a different approach:
+    - Semantic Coverage: Sentence-level embedding similarity (fast, ~80MB model)
+    - BERTScore Recall: Token-level BERT embeddings (medium, ~500MB)
+    - BARTScore: Generative probability (slow, ~1.6GB, disabled by default)
+
+    Use this when: You want a comprehensive completeness assessment with multiple metrics.
 
     Args:
-        source: The original source text.
-        summary: The generated summary.
-        use_semantic_coverage: Whether to compute Semantic Coverage.
-        use_bertscore_recall: Whether to compute BERTScore Recall.
-        use_bartscore: Whether to compute BARTScore (requires ~1.6GB model).
+        source (str): Original source document text to summarize
+        summary (str): Generated summary text to evaluate
+        use_semantic_coverage (bool, optional): Enable sentence-level coverage check. Default True
+        use_bertscore_recall (bool, optional): Enable BERTScore recall metric. Default True
+        use_bartscore (bool, optional): Enable BARTScore (requires large model download). Default False
 
     Returns:
-        Dictionary with all completeness metric results.
+        Dict[str, Dict]: Dictionary mapping metric names to their results:
+            - 'SemanticCoverage': Results from compute_semantic_coverage() if enabled
+            - 'BERTScoreRecall': Results from compute_bertscore_recall_source() if enabled
+            - 'BARTScore': Results from compute_bartscore() if enabled
+            Each value is a dict with 'score', 'interpretation', and possibly 'error' keys.
+
+    Example:
+        >>> results = compute_all_completeness_metrics("Source...", "Summary...")
+        >>> results['SemanticCoverage']['score']  # e.g., 0.65
+        >>> results['BERTScoreRecall']['recall']  # e.g., 0.42
+        >>> list(results.keys())  # ['SemanticCoverage', 'BERTScoreRecall']
     """
     results = {}
 

@@ -403,23 +403,27 @@ class TestEra3BLLMJudge:
         return bool(api_key and address)
 
     def test_llm_judge_initialization(self, check_api_available):
-        """Test LLMJudgeEvaluator can be initialized."""
+        """Test LLM Judge functions can be imported."""
         if not check_api_available:
             pytest.skip("H2OGPTE API not configured")
 
-        from src.evaluators.era3_llm_judge import LLMJudgeEvaluator
-        evaluator = LLMJudgeEvaluator(model_name='meta-llama/Llama-3.3-70B-Instruct')
-        assert evaluator is not None
+        from src.evaluators.era3_llm_judge import get_client
+        client = get_client()
+        assert client is not None
 
     def test_geval_faithfulness(self, check_api_available):
         """Test G-Eval Faithfulness evaluation."""
         if not check_api_available:
             pytest.skip("H2OGPTE API not configured")
 
-        from src.evaluators.era3_llm_judge import LLMJudgeEvaluator
-        evaluator = LLMJudgeEvaluator(model_name='meta-llama/Llama-3.3-70B-Instruct')
+        from src.evaluators.era3_llm_judge import evaluate_faithfulness
 
-        result = evaluator.evaluate_faithfulness(SOURCE_TEXT, SUMMARY_GOOD, timeout=90)
+        result = evaluate_faithfulness(
+            SOURCE_TEXT,
+            SUMMARY_GOOD,
+            model_name='meta-llama/Llama-3.3-70B-Instruct',
+            timeout=90
+        )
 
         if 'error' not in result:
             assert 'score' in result
@@ -431,10 +435,13 @@ class TestEra3BLLMJudge:
         if not check_api_available:
             pytest.skip("H2OGPTE API not configured")
 
-        from src.evaluators.era3_llm_judge import LLMJudgeEvaluator
-        evaluator = LLMJudgeEvaluator(model_name='meta-llama/Llama-3.3-70B-Instruct')
+        from src.evaluators.era3_llm_judge import evaluate_coherence
 
-        result = evaluator.evaluate_coherence(SUMMARY_GOOD, timeout=90)
+        result = evaluate_coherence(
+            SUMMARY_GOOD,
+            model_name='meta-llama/Llama-3.3-70B-Instruct',
+            timeout=90
+        )
 
         if 'error' not in result:
             assert 'score' in result
@@ -445,10 +452,14 @@ class TestEra3BLLMJudge:
         if not check_api_available:
             pytest.skip("H2OGPTE API not configured")
 
-        from src.evaluators.era3_llm_judge import LLMJudgeEvaluator
-        evaluator = LLMJudgeEvaluator(model_name='meta-llama/Llama-3.3-70B-Instruct')
+        from src.evaluators.era3_llm_judge import evaluate_relevance
 
-        result = evaluator.evaluate_relevance(SOURCE_TEXT, SUMMARY_GOOD, timeout=90)
+        result = evaluate_relevance(
+            SOURCE_TEXT,
+            SUMMARY_GOOD,
+            model_name='meta-llama/Llama-3.3-70B-Instruct',
+            timeout=90
+        )
 
         if 'error' not in result:
             assert 'score' in result
@@ -459,10 +470,13 @@ class TestEra3BLLMJudge:
         if not check_api_available:
             pytest.skip("H2OGPTE API not configured")
 
-        from src.evaluators.era3_llm_judge import LLMJudgeEvaluator
-        evaluator = LLMJudgeEvaluator(model_name='meta-llama/Llama-3.3-70B-Instruct')
+        from src.evaluators.era3_llm_judge import evaluate_fluency
 
-        result = evaluator.evaluate_fluency(SUMMARY_GOOD, timeout=90)
+        result = evaluate_fluency(
+            SUMMARY_GOOD,
+            model_name='meta-llama/Llama-3.3-70B-Instruct',
+            timeout=90
+        )
 
         if 'error' not in result:
             assert 'score' in result
@@ -473,10 +487,14 @@ class TestEra3BLLMJudge:
         if not check_api_available:
             pytest.skip("H2OGPTE API not configured")
 
-        from src.evaluators.era3_llm_judge import LLMJudgeEvaluator
-        evaluator = LLMJudgeEvaluator(model_name='meta-llama/Llama-3.3-70B-Instruct')
+        from src.evaluators.era3_llm_judge import evaluate_dag
 
-        result = evaluator.evaluate_dag(SOURCE_TEXT, SUMMARY_GOOD, timeout=90)
+        result = evaluate_dag(
+            SOURCE_TEXT,
+            SUMMARY_GOOD,
+            model_name='meta-llama/Llama-3.3-70B-Instruct',
+            timeout=90
+        )
 
         if 'error' not in result:
             assert 'score' in result
@@ -488,28 +506,32 @@ class TestEra3BLLMJudge:
         if not check_api_available:
             pytest.skip("H2OGPTE API not configured")
 
-        from src.evaluators.era3_llm_judge import LLMJudgeEvaluator
-        evaluator = LLMJudgeEvaluator(model_name='meta-llama/Llama-3.3-70B-Instruct')
+        from src.evaluators.era3_llm_judge import evaluate_prometheus
 
-        # Prometheus takes (reference_summary, summary, timeout)
-        result = evaluator.evaluate_prometheus(REFERENCE_TEXT, SUMMARY_GOOD, timeout=90)
+        # Prometheus takes (reference_summary, summary, model_name, timeout)
+        result = evaluate_prometheus(
+            REFERENCE_TEXT,
+            SUMMARY_GOOD,
+            model_name='meta-llama/Llama-3.3-70B-Instruct',
+            timeout=90
+        )
 
         if 'error' not in result:
             assert 'score' in result
-            assert 1 <= result['score'] <= 5
+            assert 0 <= result['score'] <= 1  # Normalized score
 
     def test_evaluate_all(self, check_api_available):
         """Test evaluate_all returns all metrics."""
         if not check_api_available:
             pytest.skip("H2OGPTE API not configured")
 
-        from src.evaluators.era3_llm_judge import LLMJudgeEvaluator
-        evaluator = LLMJudgeEvaluator(model_name='meta-llama/Llama-3.3-70B-Instruct')
+        from src.evaluators.era3_llm_judge import evaluate_all
 
-        results = evaluator.evaluate_all(
+        results = evaluate_all(
             SOURCE_TEXT,
             REFERENCE_TEXT,
             SUMMARY_GOOD,
+            model_name='meta-llama/Llama-3.3-70B-Instruct',
             timeout=90,
             include_dag=True,
             include_prometheus=True

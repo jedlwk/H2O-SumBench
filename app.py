@@ -26,7 +26,15 @@ from io import BytesIO
 
 # Check if H2OGPTE API is available
 try:
-    from src.evaluators.era3_llm_judge import LLMJudgeEvaluator
+    from src.evaluators.era3_llm_judge import (
+        evaluate_faithfulness,
+        evaluate_coherence,
+        evaluate_relevance,
+        evaluate_fluency,
+        evaluate_dag,
+        evaluate_prometheus,
+        evaluate_all
+    )
     from dotenv import load_dotenv
     load_dotenv()
     import os
@@ -1085,9 +1093,6 @@ def batch_evaluate_dataset(df: pd.DataFrame, source_col: str, reference_col: str
     results_df['dag_score'] = None
     results_df['prometheus_score'] = None
 
-    # Create LLM Judge evaluator
-    evaluator = LLMJudgeEvaluator(model_name=model_name)
-
     total_rows = len(df)
 
     for row_num, (idx, row) in enumerate(df.iterrows(), start=1):
@@ -1101,27 +1106,27 @@ def batch_evaluate_dataset(df: pd.DataFrame, source_col: str, reference_col: str
 
         try:
             # G-Eval Faithfulness (this serves as our fact-checking metric)
-            faithfulness_result = evaluator.evaluate_faithfulness(source_text, summary_text)
+            faithfulness_result = evaluate_faithfulness(source_text, summary_text, model_name)
             results_df.at[idx, 'geval_faithfulness'] = faithfulness_result.get('score', None)
 
             # G-Eval Coherence
-            coherence_result = evaluator.evaluate_coherence(summary_text)
+            coherence_result = evaluate_coherence(summary_text, model_name)
             results_df.at[idx, 'geval_coherence'] = coherence_result.get('score', None)
 
             # G-Eval Relevance
-            relevance_result = evaluator.evaluate_relevance(source_text, summary_text)
+            relevance_result = evaluate_relevance(source_text, summary_text, model_name)
             results_df.at[idx, 'geval_relevance'] = relevance_result.get('score', None)
 
             # G-Eval Fluency
-            fluency_result = evaluator.evaluate_fluency(summary_text)
+            fluency_result = evaluate_fluency(summary_text, model_name)
             results_df.at[idx, 'geval_fluency'] = fluency_result.get('score', None)
 
             # DAG
-            dag_result = evaluator.evaluate_dag(source_text, summary_text)
+            dag_result = evaluate_dag(source_text, summary_text, model_name)
             results_df.at[idx, 'dag_score'] = dag_result.get('raw_score', None)
 
             # Prometheus
-            prometheus_result = evaluator.evaluate_prometheus(source_text, summary_text, reference_text)
+            prometheus_result = evaluate_prometheus(reference_text, summary_text, model_name)
             results_df.at[idx, 'prometheus_score'] = prometheus_result.get('score', None)
 
 
@@ -1698,11 +1703,11 @@ def main():
 
                     with st.spinner(spinner_text):
                         try:
-                            evaluator = LLMJudgeEvaluator(model_name=st.session_state.selected_model)
-                            results["completeness"] = evaluator.evaluate_all(
+                            results["completeness"] = evaluate_all(
                                 source_text,
                                 reference_text if has_reference else "",
                                 summary_text,
+                                model_name=st.session_state.selected_model,
                                 timeout=90,
                                 include_dag=use_dag,
                                 include_prometheus=use_prometheus
