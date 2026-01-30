@@ -78,7 +78,7 @@ for i, test_case in enumerate(test_cases, 1):
     print("1️⃣  NLI (DeBERTa-v3) - Local")
     print("-" * 80)
     nli_result = compute_nli_score(
-        summary=test_case['summary']
+        summary=test_case['summary'],
         source=test_case['source']
         )
     if 'error' in nli_result:
