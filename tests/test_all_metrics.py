@@ -89,7 +89,7 @@ class TestEra1LexicalMetrics:
         from src.evaluators.era1_word_overlap import compute_rouge_scores
         scores = compute_rouge_scores(IDENTICAL_TEXT, IDENTICAL_TEXT)
 
-        if 'error' not in scores:
+        if scores.get('error') is None:
             assert scores['rouge1'] == 1.0
             assert scores['rouge2'] == 1.0
             assert scores['rougeL'] == 1.0
@@ -109,7 +109,7 @@ class TestEra1LexicalMetrics:
         from src.evaluators.era1_word_overlap import compute_bleu_score
         scores = compute_bleu_score(IDENTICAL_TEXT, IDENTICAL_TEXT)
 
-        if 'error' not in scores:
+        if scores.get('error') is None:
             assert scores['bleu'] > 0.9, "BLEU for identical texts should be > 0.9"
         else:
             pytest.skip(f"BLEU not available: {scores['error']}")
@@ -120,7 +120,7 @@ class TestEra1LexicalMetrics:
         scores = compute_meteor_score(REFERENCE_TEXT, SUMMARY_GOOD)
 
         assert 'meteor' in scores, "Missing meteor score"
-        if 'error' not in scores:
+        if scores.get('error') is None:
             assert 0 <= scores['meteor'] <= 1
 
     def test_meteor_identical_texts(self):
@@ -128,7 +128,7 @@ class TestEra1LexicalMetrics:
         from src.evaluators.era1_word_overlap import compute_meteor_score
         scores = compute_meteor_score(IDENTICAL_TEXT, IDENTICAL_TEXT)
 
-        if 'error' not in scores:
+        if scores.get('error') is None:
             assert scores['meteor'] > 0.9, "METEOR for identical texts should be > 0.9"
 
     def test_chrf_score_format(self):
@@ -137,7 +137,7 @@ class TestEra1LexicalMetrics:
         scores = compute_chrf_score(REFERENCE_TEXT, SUMMARY_GOOD)
 
         assert 'chrf' in scores, "Missing chrF++ score"
-        if 'error' not in scores:
+        if scores.get('error') is None:
             assert 0 <= scores['chrf'] <= 1
             assert 'raw_score' in scores
 
@@ -146,7 +146,7 @@ class TestEra1LexicalMetrics:
         from src.evaluators.era1_word_overlap import compute_chrf_score
         scores = compute_chrf_score(IDENTICAL_TEXT, IDENTICAL_TEXT)
 
-        if 'error' not in scores:
+        if scores.get('error') is None:
             assert scores['chrf'] == 1.0, "chrF++ for identical texts should be 1.0"
 
     def test_levenshtein_score_format(self):
@@ -162,7 +162,7 @@ class TestEra1LexicalMetrics:
         from src.evaluators.era1_word_overlap import compute_levenshtein_score
         scores = compute_levenshtein_score(IDENTICAL_TEXT, IDENTICAL_TEXT)
 
-        if 'error' not in scores:
+        if scores.get('error') is None:
             assert scores['levenshtein'] == 1.0
         else:
             pytest.skip(f"Levenshtein not available: {scores['error']}")
@@ -173,7 +173,7 @@ class TestEra1LexicalMetrics:
         scores = compute_perplexity(SOURCE_TEXT, SUMMARY_GOOD)
 
         assert 'perplexity' in scores or 'error' in scores
-        if 'error' not in scores:
+        if scores.get('error') is None:
             assert 'normalized_score' in scores
             assert 0 <= scores['normalized_score'] <= 1
 
@@ -203,7 +203,7 @@ class TestEra2SemanticMetrics:
         scores = compute_bertscore(REFERENCE_TEXT, SUMMARY_GOOD)
 
         assert 'f1' in scores or 'error' in scores
-        if 'error' not in scores:
+        if scores.get('error') is None:
             assert 'precision' in scores
             assert 'recall' in scores
             assert 0 <= scores['f1'] <= 1
@@ -213,7 +213,7 @@ class TestEra2SemanticMetrics:
         from src.evaluators.era2_embeddings import compute_bertscore
         scores = compute_bertscore(IDENTICAL_TEXT, IDENTICAL_TEXT)
 
-        if 'error' not in scores:
+        if scores.get('error') is None:
             assert scores['f1'] > 0.9, "BERTScore F1 for identical texts should be > 0.9"
 
     def test_moverscore_format(self):
@@ -222,7 +222,7 @@ class TestEra2SemanticMetrics:
         scores = compute_moverscore(REFERENCE_TEXT, SUMMARY_GOOD)
 
         assert 'moverscore' in scores or 'error' in scores
-        if 'error' not in scores:
+        if scores.get('error') is None:
             assert isinstance(scores['moverscore'], float)
 
     def test_all_era2_metrics(self):
@@ -250,7 +250,7 @@ class TestEra3AFaithfulnessMetrics:
         scores = compute_nli_score(SOURCE_TEXT, SUMMARY_GOOD)
 
         assert 'nli_score' in scores
-        if 'error' not in scores:
+        if scores.get('error') is None:
             assert 0 <= scores['nli_score'] <= 1
             assert 'label' in scores
             assert 'interpretation' in scores
@@ -262,7 +262,7 @@ class TestEra3AFaithfulnessMetrics:
         good_scores = compute_nli_score(SOURCE_TEXT, SUMMARY_GOOD)
         bad_scores = compute_nli_score(SOURCE_TEXT, SUMMARY_BAD)
 
-        if 'error' not in good_scores and 'error' not in bad_scores:
+        if good_scores.get('error') is None and bad_scores.get('error') is None:
             # Good summary should have higher consistency score
             assert good_scores['nli_score'] >= bad_scores['nli_score'] * 0.8, \
                 "Good summary NLI score should be >= 80% of bad summary score"
@@ -273,7 +273,7 @@ class TestEra3AFaithfulnessMetrics:
         scores = compute_factcc_score(SOURCE_TEXT, SUMMARY_GOOD)
 
         assert 'score' in scores or 'error' in scores
-        if 'error' not in scores and scores['score'] is not None:
+        if scores.get('error') is None and scores['score'] is not None:
             assert 0 <= scores['score'] <= 1
             assert 'label' in scores
             assert 'interpretation' in scores
@@ -284,7 +284,7 @@ class TestEra3AFaithfulnessMetrics:
         scores = compute_alignscore(SOURCE_TEXT, SUMMARY_GOOD)
 
         assert 'score' in scores or 'error' in scores
-        if 'error' not in scores and scores['score'] is not None:
+        if scores.get('error') is None and scores['score'] is not None:
             assert 0 <= scores['score'] <= 1
             assert 'interpretation' in scores
 
@@ -294,7 +294,7 @@ class TestEra3AFaithfulnessMetrics:
         scores = compute_coverage_score(SOURCE_TEXT, SUMMARY_GOOD)
 
         assert 'score' in scores or 'error' in scores
-        if 'error' not in scores and scores['score'] is not None:
+        if scores.get('error') is None and scores['score'] is not None:
             assert 0 <= scores['score'] <= 1
             assert 'source_entities' in scores
             assert 'covered_entities' in scores
@@ -307,7 +307,7 @@ class TestEra3AFaithfulnessMetrics:
         good_scores = compute_coverage_score(SOURCE_TEXT, SUMMARY_GOOD)
         bad_scores = compute_coverage_score(SOURCE_TEXT, SUMMARY_BAD)
 
-        if 'error' not in good_scores and 'error' not in bad_scores:
+        if good_scores.get('error') is None and bad_scores.get('error') is None:
             if good_scores['score'] is not None and bad_scores['score'] is not None:
                 # Good summary should have similar or higher coverage
                 assert good_scores['score'] >= bad_scores['score'] * 0.5
@@ -343,7 +343,7 @@ class TestCompletenessMetrics:
         scores = compute_semantic_coverage(SOURCE_TEXT, SUMMARY_GOOD)
 
         assert 'score' in scores or 'error' in scores
-        if 'error' not in scores and scores['score'] is not None:
+        if scores.get('error') is None and scores['score'] is not None:
             assert 0 <= scores['score'] <= 1
             assert 'source_sentences' in scores
             assert 'covered_sentences' in scores
@@ -356,7 +356,7 @@ class TestCompletenessMetrics:
         good_scores = compute_semantic_coverage(SOURCE_TEXT, SUMMARY_GOOD)
         empty_scores = compute_semantic_coverage(SOURCE_TEXT, "This is a very short summary.")
 
-        if 'error' not in good_scores and 'error' not in empty_scores:
+        if good_scores.get('error') is None and empty_scores.get('error') is None:
             if good_scores['score'] is not None and empty_scores['score'] is not None:
                 assert good_scores['score'] >= empty_scores['score']
 
@@ -366,7 +366,7 @@ class TestCompletenessMetrics:
         scores = compute_bertscore_recall_source(SOURCE_TEXT, SUMMARY_GOOD)
 
         assert 'recall' in scores or 'error' in scores
-        if 'error' not in scores and scores['recall'] is not None:
+        if scores.get('error') is None and scores['recall'] is not None:
             assert 0 <= scores['recall'] <= 1
             assert 'precision' in scores
             assert 'f1' in scores
@@ -378,7 +378,7 @@ class TestCompletenessMetrics:
         scores = compute_bartscore(SOURCE_TEXT, SUMMARY_GOOD)
 
         assert 'score' in scores or 'error' in scores
-        if 'error' not in scores and scores['score'] is not None:
+        if scores.get('error') is None and scores['score'] is not None:
             assert 'interpretation' in scores
 
     def test_all_completeness_metrics(self):
@@ -433,7 +433,7 @@ class TestEra3BLLMJudge:
             timeout=90
         )
 
-        if 'error' not in result:
+        if result.get('error') is None:
             assert 'score' in result
             assert 0 <= result['score'] <= 1
             assert 'raw_score' in result
@@ -451,7 +451,7 @@ class TestEra3BLLMJudge:
             timeout=90
         )
 
-        if 'error' not in result:
+        if result.get('error') is None:
             assert 'score' in result
             assert 0 <= result['score'] <= 1
 
@@ -469,7 +469,7 @@ class TestEra3BLLMJudge:
             timeout=90
         )
 
-        if 'error' not in result:
+        if result.get('error') is None:
             assert 'score' in result
             assert 0 <= result['score'] <= 1
 
@@ -486,7 +486,7 @@ class TestEra3BLLMJudge:
             timeout=90
         )
 
-        if 'error' not in result:
+        if result.get('error') is None:
             assert 'score' in result
             assert 0 <= result['score'] <= 1
 
@@ -504,7 +504,7 @@ class TestEra3BLLMJudge:
             timeout=90
         )
 
-        if 'error' not in result:
+        if result.get('error') is None:
             assert 'score' in result
             assert 'raw_score' in result
             assert 0 <= result['raw_score'] <= 6
@@ -523,7 +523,7 @@ class TestEra3BLLMJudge:
             timeout=90
         )
 
-        if 'error' not in result:
+        if result.get('error') is None:
             assert 'score' in result
             assert 0 <= result['score'] <= 1  # Normalized score
 

@@ -422,6 +422,7 @@ def evaluate_faithfulness(
                 'raw_score': score,
                 'explanation': explanation or 'No explanation provided',
                 'full_response': response,
+                'error': None
             }
         else:
             return {
@@ -485,6 +486,7 @@ def evaluate_coherence(
                 'raw_score': score,
                 'explanation': explanation or 'No explanation provided',
                 'full_response': response,
+                'error': None
             }
         else:
             return {
@@ -558,6 +560,7 @@ def evaluate_relevance(
                 'raw_score': score,
                 'explanation': explanation or 'No explanation provided',
                 'full_response': response,
+                'error': None
             }
         else:
             return {
@@ -621,6 +624,7 @@ def evaluate_fluency(
                 'raw_score': score,
                 'explanation': explanation or 'No explanation provided',
                 'full_response': response,
+                'error': None
             }
         else:
             return {
@@ -776,6 +780,7 @@ def evaluate_dag(
             'step3_clarity': step3,
             'explanation': explanation if explanation else 'No explanation provided',
             'full_response': response,
+            'error': None
         }
 
     except Exception as e:
@@ -905,6 +910,7 @@ def evaluate_prometheus(
                 'raw_score': score,
                 'explanation': explanation or 'No explanation provided',
                 'full_response': response,
+                'error': None
             }
         else:
             return {

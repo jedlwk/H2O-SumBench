@@ -76,14 +76,15 @@ def compute_rouge_scores(
         return {
             'rouge1': round(scores['rouge1'].fmeasure, 4),
             'rouge2': round(scores['rouge2'].fmeasure, 4),
-            'rougeL': round(scores['rougeL'].fmeasure, 4)
+            'rougeL': round(scores['rougeL'].fmeasure, 4),
+            'error': None
         }
 
     except Exception as e:
         return {
-            'rouge1': 0.0,
-            'rouge2': 0.0,
-            'rougeL': 0.0,
+            'rouge1': None,
+            'rouge2': None,
+            'rougeL': None,
             'error': str(e)
         }
 
@@ -137,12 +138,13 @@ def compute_bleu_score(
         score = sentence_bleu(summary, [comparison_text])
 
         return {
-            'bleu': round(score.score / 100, 4)  # Normalize to 0-1
+            'bleu': round(score.score / 100, 4),  # Normalize to 0-1
+            'error': None
         }
 
     except Exception as e:
         return {
-            'bleu': 0.0,
+            'bleu': None,
             'error': str(e)
         }
 
@@ -228,7 +230,8 @@ def compute_meteor_score(
         score = meteor_score([source_tokens], summary_tokens)
 
         return {
-            'meteor': round(score, 4)
+            'meteor': round(score, 4),
+            'error': None
         }
 
     except Exception as e:
@@ -236,7 +239,7 @@ def compute_meteor_score(
         if 'punkt_tab' in error_msg:
             error_msg = "NLTK punkt_tab missing. Run: python3 -c \"import nltk; nltk.download('punkt_tab')\""
         return {
-            'meteor': 0.0,
+            'meteor': None,
             'error': error_msg
         }
 
@@ -297,12 +300,13 @@ def compute_levenshtein_score(
             similarity = 1 - (distance / max_length)
 
         return {
-            'levenshtein': round(similarity, 4)
+            'levenshtein': round(similarity, 4),
+            'error': None
         }
 
     except Exception as e:
         return {
-            'levenshtein': 0.0,
+            'levenshtein': None,
             'error': str(e)
         }
 
@@ -370,13 +374,14 @@ def compute_perplexity(
 
         return {
             'perplexity': round(perplexity, 4),
-            'normalized_score': round(normalized, 4)
+            'normalized_score': round(normalized, 4),
+            'error': None
         }
 
     except Exception as e:
         return {
-            'perplexity': 0.0,
-            'normalized_score': 0.0,
+            'perplexity': None,
+            'normalized_score': None,
             'error': str(e)
         }
 
@@ -432,17 +437,18 @@ def compute_chrf_score(
 
         return {
             'chrf': round(score.score / 100, 4),  # Normalize to 0-1
-            'raw_score': round(score.score, 2)
+            'raw_score': round(score.score, 2),
+            'error': None
         }
 
     except ImportError:
         return {
-            'chrf': 0.0,
+            'chrf': None,
             'error': 'sacrebleu not installed. Run: pip install sacrebleu'
         }
     except Exception as e:
         return {
-            'chrf': 0.0,
+            'chrf': None,
             'error': str(e)
         }
 

@@ -90,7 +90,8 @@ def compute_semantic_coverage(
                 'score': 1.0,
                 'source_sentences': 0,
                 'covered_sentences': 0,
-                'interpretation': 'No sentences in source'
+                'interpretation': 'No sentences in source',
+                'error': None
             }
 
         if not summary_sentences:
@@ -98,7 +99,8 @@ def compute_semantic_coverage(
                 'score': 0.0,
                 'source_sentences': len(source_sentences),
                 'covered_sentences': 0,
-                'interpretation': 'No sentences in summary'
+                'interpretation': 'No sentences in summary',
+                'error': None
             }
 
         # Load model
@@ -136,7 +138,8 @@ def compute_semantic_coverage(
             'source_sentences': len(source_sentences),
             'covered_sentences': covered_count,
             'threshold': threshold,
-            'interpretation': _interpret_semantic_coverage(coverage_score)
+            'interpretation': _interpret_semantic_coverage(coverage_score),
+            'error': None
         }
 
     except ImportError as e:
@@ -230,7 +233,8 @@ def compute_bertscore_recall_source(
             'recall': round(recall, 4),
             'precision': round(float(P[0]), 4),
             'f1': round(float(F1[0]), 4),
-            'interpretation': _interpret_bertscore_recall(recall)
+            'interpretation': _interpret_bertscore_recall(recall),
+            'error': None
         }
 
     except ImportError:
@@ -344,7 +348,8 @@ def compute_bartscore(
 
         return {
             'score': round(bartscore, 4),
-            'interpretation': _interpret_bartscore(bartscore)
+            'interpretation': _interpret_bartscore(bartscore),
+            'error': None
         }
 
     except ImportError as e:

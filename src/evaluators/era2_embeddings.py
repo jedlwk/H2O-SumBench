@@ -87,14 +87,15 @@ def compute_bertscore(
         return {
             'precision': round(P.item(), 4),
             'recall': round(R.item(), 4),
-            'f1': round(F1.item(), 4)
+            'f1': round(F1.item(), 4),
+            'error': None
         }
 
     except Exception as e:
         return {
-            'precision': 0.0,
-            'recall': 0.0,
-            'f1': 0.0,
+            'precision': None,
+            'recall': None,
+            'f1': None,
             'error': str(e)
         }
 
@@ -141,7 +142,7 @@ def compute_moverscore(
     # If MoverScore import previously failed, return cached error immediately
     if _MOVERSCORE_UNAVAILABLE:
         return {
-            'moverscore': 0.0,
+            'moverscore': None,
             'error': _MOVERSCORE_ERROR_MSG or "MoverScore unavailable (previous import failed)"
         }
 
@@ -171,7 +172,7 @@ def compute_moverscore(
                 "Try running setup.sh again to reinstall dependencies."
             )
             return {
-                'moverscore': 0.0,
+                'moverscore': None,
                 'error': _MOVERSCORE_ERROR_MSG
             }
 
@@ -197,12 +198,13 @@ def compute_moverscore(
         )
 
         return {
-            'moverscore': round(scores[0], 4)
+            'moverscore': round(scores[0], 4),
+            'error': None
         }
 
     except ImportError as e:
         return {
-            'moverscore': 0.0,
+            'moverscore': None,
             'error': (
                 "MoverScore not installed. "
                 "Run: pip3 install git+https://github.com/AIPHES/emnlp19-moverscore.git"
@@ -213,14 +215,14 @@ def compute_moverscore(
         error_str = str(e)
         if "CUDA" in error_str or "cuda" in error_str.lower():
             return {
-                'moverscore': 0.0,
+                'moverscore': None,
                 'error': (
                     "MoverScore CUDA error. The package has a known issue with CPU-only PyTorch. "
                     "Reinstall PyTorch: pip3 uninstall torch && pip3 install torch --index-url https://download.pytorch.org/whl/cpu"
                 )
             }
         return {
-            'moverscore': 0.0,
+            'moverscore': None,
             'error': f"MoverScore error: {error_str}"
         }
     except Exception as e:
@@ -231,7 +233,7 @@ def compute_moverscore(
             error_msg = "MoverScore CUDA initialization error (known issue with CPU-only mode)."
 
         return {
-            'moverscore': 0.0,
+            'moverscore': None,
             'error': error_msg
         }
 

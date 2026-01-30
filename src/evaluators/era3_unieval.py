@@ -113,7 +113,8 @@ def compute_unieval(
                 'coherence': _interpret_unieval_score(result.get('coherence')),
                 'consistency': _interpret_unieval_score(result.get('consistency')),
                 'fluency': _interpret_unieval_score(result.get('fluency'))
-            }
+            },
+            'error': None
         }
 
     except ImportError:
@@ -216,7 +217,8 @@ def _compute_unieval_fallback(
                 'consistency': _interpret_unieval_score(results.get('consistency')),
                 'fluency': _interpret_unieval_score(results.get('fluency'))
             },
-            'note': 'Using fallback implementation (UniEval library not installed)'
+            'note': 'Using fallback implementation (UniEval library not installed)',
+            'error': None
         }
 
     except ImportError as e:

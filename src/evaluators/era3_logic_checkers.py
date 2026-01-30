@@ -115,12 +115,13 @@ def compute_nli_score(
         return {
             'nli_score': round(entailment_score, 4),
             'label': label,
-            'interpretation': _interpret_nli_score(entailment_score)
+            'interpretation': _interpret_nli_score(entailment_score),
+            'error': None
         }
 
     except Exception as e:
         return {
-            'nli_score': 0.0,
+            'nli_score': None,
             'label': 'ERROR',
             'error': str(e)
         }
@@ -304,7 +305,8 @@ Explanation: [Brief summary of any issues found, or "All claims verified" if per
             'issues_found': issues_found,
             'explanation': explanation if explanation else 'No explanation provided',
             'full_response': response,
-            'interpretation': _interpret_factchecker_score(normalized_score) if normalized_score else 'N/A'
+            'interpretation': _interpret_factchecker_score(normalized_score) if normalized_score else 'N/A',
+            'error': None
         }
 
     except Exception as e:
@@ -423,7 +425,8 @@ def compute_factcc_score(
             'score': round(consistency_score, 4),
             'label': 'Consistent' if is_consistent else 'Inconsistent',
             'raw_label': label,
-            'interpretation': _interpret_factcc_score(consistency_score)
+            'interpretation': _interpret_factcc_score(consistency_score),
+            'error': None
         }
 
     except Exception as e:
@@ -527,7 +530,8 @@ def compute_alignscore(
 
         return {
             'score': round(float(score), 4),
-            'interpretation': _interpret_alignscore(float(score))
+            'interpretation': _interpret_alignscore(float(score)),
+            'error': None
         }
 
     except ImportError as e:
@@ -624,7 +628,8 @@ def compute_coverage_score(
                 'score': 1.0,  # If no entities in source, summary trivially covers all
                 'source_entities': 0,
                 'covered_entities': 0,
-                'interpretation': 'No named entities in source'
+                'interpretation': 'No named entities in source',
+                'error': None
             }
 
         # Extract entities from summary
@@ -642,7 +647,8 @@ def compute_coverage_score(
             'source_entities': len(source_entities),
             'covered_entities': len(covered),
             'missing_entities': list(source_entities - summary_entities)[:5],  # Show up to 5 missing
-            'interpretation': _interpret_coverage_score(coverage_score)
+            'interpretation': _interpret_coverage_score(coverage_score),
+            'error': None
         }
 
     except ImportError:
