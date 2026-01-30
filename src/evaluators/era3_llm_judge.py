@@ -982,7 +982,6 @@ def evaluate_all(
         ),
         'coherence': evaluate_coherence(
             summary=summary,
-            source=source,
             model_name=model_name,
             timeout=timeout
         ),
@@ -994,7 +993,6 @@ def evaluate_all(
         ),
         'fluency': evaluate_fluency(
             summary=summary,
-            source=source,
             model_name=model_name,
             timeout=timeout
         ),
