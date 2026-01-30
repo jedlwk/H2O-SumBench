@@ -73,6 +73,7 @@ pyyaml==6.0.2               # Config parsing
 regex==2024.9.11            # Advanced regex
 safetensors==0.4.5          # Safe model loading
 filelock==3.16.1            # File locking
+pytest==9.0.2               # Testing
 
 # =============================================================================
 # NOT INCLUDED (and why)
