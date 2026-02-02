@@ -4,16 +4,16 @@ A comprehensive evaluation framework for assessing text summarization quality.
 """
 
 # CRITICAL: Force CPU mode FIRST before ANY other imports
-import force_cpu  # noqa: F401
-
 import os
 import sys
 
+# Add parent directory to path for imports (must be before force_cpu import)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+import force_cpu  # noqa: F401
+
 import streamlit as st
 from typing import Dict, Any
-
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from src.evaluators.era1_word_overlap import compute_all_era1_metrics
 from src.evaluators.era2_embeddings import compute_all_era2_metrics

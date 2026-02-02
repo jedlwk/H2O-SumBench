@@ -22,20 +22,23 @@ cp .env.example .env
 # Edit .env with your H2OGPTE credentials
 
 # 4. Launch
-streamlit run app.py
+streamlit run ui/app.py
 ```
 
-The app opens at `http://localhost:8501`
+The app opens at `http://localhost:8501`. Use the sidebar to navigate between:
+- **Standalone Evaluators** - Manual evaluation with all metrics
+- **Agent Evaluation** - AI agent-driven evaluation
+- **MCP Dashboard** - Build bundles and test tools
 
 ---
 
-## Three Ways to Use SumOmniEval
+## Four Ways to Use SumOmniEval
 
 ### 1. Standalone Evaluators (Streamlit App)
 Use the interactive web interface to evaluate summaries manually.
 
 ```bash
-streamlit run app.py
+streamlit run ui/app.py
 ```
 
 Supports CSV, JSON, Excel (.xlsx), and TSV file uploads. Map your columns to Source, Summary, and Reference (optional).
@@ -159,10 +162,15 @@ All local models download automatically on first use:
 
 ```
 SumOmniEval/
-├── app.py                      # Main Streamlit application
 ├── requirements.txt            # Python dependencies
 ├── METRICS.md                  # Complete metrics documentation
 ├── .env.example                # API configuration template
+│
+├── ui/                         # Streamlit application
+│   ├── app.py                  # Main entry point (standalone evaluators)
+│   └── pages/
+│       ├── 1_Agent_Evaluation.py   # Agent-based evaluation UI
+│       └── 2_MCP_Dashboard.py      # MCP server management & testing
 │
 ├── src/evaluators/
 │   ├── tool_logic.py           # Unified tool interface (CLI + library)
@@ -219,7 +227,7 @@ H2OGPTE_ADDRESS=https://your-instance.h2ogpte.com
 python -m pytest tests/test_all_metrics.py -v
 
 # Quick syntax check
-python -m py_compile app.py
+python -m py_compile ui/app.py
 ```
 
 ---
