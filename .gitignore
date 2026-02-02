@@ -75,3 +75,7 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+
+# MCP Server build artifacts
+*.zip
+mcp_server/dist_mcp/

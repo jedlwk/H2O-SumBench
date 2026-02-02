@@ -22,7 +22,7 @@ from shared_utils import load_prompt, load_summaries
 
 BASE_DIR = os.path.dirname(__file__)
 TOOL_FILE = os.path.join(BASE_DIR, '..', '..', 'src', 'evaluators', 'tool_logic.py')
-
+SERVER_FILE = os.path.join(BASE_DIR, '..', '..', 'mcp_server', 'sum_omni_eval_mcp.zip')
 
 def create_client() -> H2OGPTE:
     """Create and return H2OGPTE client."""
@@ -40,7 +40,7 @@ def create_client() -> H2OGPTE:
     return client
 
 
-def setup_collection(client: H2OGPTE) -> str:
+def setup_collection(client: H2OGPTE, agent_type: str) -> str:
     """Create collection and ingest the evaluation tool."""
     collection_id = client.create_collection(
         name='SumOmniEval Full Agent',
@@ -48,9 +48,17 @@ def setup_collection(client: H2OGPTE) -> str:
     )
     print(f"Collection created: {collection_id}")
 
+    # Select file based on agent type
+    if agent_type == "agent":
+        tool_path = TOOL_FILE
+        tool_filename = 'tool_logic.py'
+    else:  # agent_with_mcp
+        tool_path = SERVER_FILE
+        tool_filename = 'sum_omni_eval_mcp.zip'
+
     # Upload the evaluation tool file
-    with open(TOOL_FILE, 'rb') as f:
-        upload_id = client.upload('tool_logic.py', f)
+    with open(tool_path, 'rb') as f:
+        upload_id = client.upload(tool_filename, f)
 
     ingest_job = client.ingest_uploads(
         collection_id=collection_id,
@@ -58,7 +66,7 @@ def setup_collection(client: H2OGPTE) -> str:
         ingest_mode='agent_only'
     )
 
-    print("Waiting for tool ingestion...")
+    print(f"Waiting for {tool_filename} ingestion...")
     while True:
         job_status = client.get_job(ingest_job.id)
         if job_status.completed:
@@ -69,11 +77,18 @@ def setup_collection(client: H2OGPTE) -> str:
         time.sleep(2)
 
     # Register the custom tool
-    client.add_custom_agent_tool(
-        tool_type='general_code',
-        tool_args={'tool_name': 'tool_logic'},
-        custom_tool_path=TOOL_FILE
-    )
+    if agent_type == "agent":
+        client.add_custom_agent_tool(
+            tool_type='general_code',
+            tool_args={'tool_name': 'tool_logic'},
+            custom_tool_path=TOOL_FILE
+        )
+    else:  # agent_with_mcp
+        client.add_custom_agent_tool(
+            tool_type='local_mcp',
+            tool_args={'tool_name': 'sum_omni_eval_mcp'},
+            custom_tool_path=SERVER_FILE
+        )
 
     return collection_id
 
@@ -107,7 +122,7 @@ def run_evaluation(client: H2OGPTE, generated_summary: str, reference_summary: s
     return reply.content
 
 
-def main(sample_key: str = "grenfell_tower"):
+def main(sample_key: str = "grenfell_tower", agent_type: str = "agent"):
     """Main entry point."""
     # Load sample data
     sample = load_summaries(sample_key)
@@ -115,7 +130,7 @@ def main(sample_key: str = "grenfell_tower"):
 
     # Create client and setup
     client = create_client()
-    setup_collection(client)
+    setup_collection(client, agent_type)
 
     # Run evaluation
     response = run_evaluation(
@@ -135,6 +150,8 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Run H2OGPTE agent evaluation")
+    parser.add_argument("--agent-type", choices=["agent", "agent_with_mcp"], default="agent",
+                        help="Type of agent to use for evaluation")
     parser.add_argument("--sample", default="grenfell_tower", help="Sample key from data/sample_summaries.json")
     parser.add_argument("--list", action="store_true", help="List available samples")
 
@@ -146,4 +163,4 @@ if __name__ == "__main__":
         for key, value in samples.items():
             print(f"  - {key}: {value.get('name', 'Unnamed')}")
     else:
-        main(args.sample)
+        main(args.sample, args.agent_type)
