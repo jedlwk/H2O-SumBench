@@ -12,7 +12,7 @@ All wrapper functions:
 - Do not modify the underlying evaluation functions
 
 Usage:
-    from src.evaluators.agent_tools import evaluate_rouge, evaluate_bertscore, list_available_metrics
+    from src.evaluators.tool_logic import evaluate_rouge, evaluate_bertscore, list_available_metrics
 
     # Run a single metric
     result = evaluate_rouge(summary="Generated text", source="Original text")
@@ -24,6 +24,8 @@ Usage:
     result = run_metric("rouge", summary="...", source="...")
 """
 
+import json
+import argparse
 from typing import Dict, Any, List, Optional, Callable
 
 # Import all evaluation functions from existing modules
@@ -1848,3 +1850,125 @@ def get_recommended_metrics(
         recommended.extend(['meteor', 'bleu'])
 
     return recommended
+
+
+# =============================================================================
+# CLI INTERFACE FOR AGENTS
+# =============================================================================
+
+def _cmd_list_metrics(args):
+    """List all available metrics grouped by category."""
+    metrics = list_available_metrics()
+
+    by_category = {}
+    for m in metrics:
+        cat = m['category']
+        if cat not in by_category:
+            by_category[cat] = []
+        by_category[cat].append({
+            "name": m["name"],
+            "description": m["description"],
+            "requires_source": m["requires_source"],
+            "requires_reference": m["requires_reference"]
+        })
+
+    print(json.dumps({"metrics_by_category": by_category}, indent=2))
+
+
+def _cmd_recommend(args):
+    """Get recommended metrics based on inputs."""
+    recommended = get_recommended_metrics(
+        has_source=args.has_source,
+        has_reference=args.has_reference,
+        quick_mode=args.quick
+    )
+    print(json.dumps({
+        "recommended_metrics": recommended,
+        "has_source": args.has_source,
+        "has_reference": args.has_reference,
+        "quick_mode": args.quick
+    }, indent=2))
+
+
+def _cmd_run(args):
+    """Run a specific metric."""
+    result = run_metric(
+        metric_name=args.metric,
+        summary=args.summary,
+        source=args.source,
+        reference_summary=args.reference
+    )
+    print(json.dumps(result, indent=2))
+
+
+def _cmd_run_multiple(args):
+    """Run multiple metrics at once."""
+    metrics = args.metrics.split(',')
+    results = run_multiple_metrics(
+        metric_names=metrics,
+        summary=args.summary,
+        source=args.source,
+        reference_summary=args.reference
+    )
+    print(json.dumps(results, indent=2))
+
+
+def _cmd_info(args):
+    """Get info about a specific metric."""
+    info = get_metric_info(args.metric)
+    if info is None:
+        print(json.dumps({"error": f"Unknown metric: {args.metric}"}))
+    else:
+        print(json.dumps(info, indent=2))
+
+
+def main():
+    """CLI entry point for agent tool calling."""
+    parser = argparse.ArgumentParser(
+        description="Summary Evaluation Tool for AI Agents"
+    )
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # list_metrics
+    list_parser = subparsers.add_parser("list_metrics", help="List all available metrics")
+    list_parser.set_defaults(func=_cmd_list_metrics)
+
+    # recommend
+    rec_parser = subparsers.add_parser("recommend", help="Get recommended metrics")
+    rec_parser.add_argument("--has-source", action="store_true")
+    rec_parser.add_argument("--has-reference", action="store_true")
+    rec_parser.add_argument("--quick", action="store_true")
+    rec_parser.set_defaults(func=_cmd_recommend)
+
+    # run
+    run_parser = subparsers.add_parser("run", help="Run a specific metric")
+    run_parser.add_argument("--metric", required=True)
+    run_parser.add_argument("--summary", required=True)
+    run_parser.add_argument("--source")
+    run_parser.add_argument("--reference")
+    run_parser.set_defaults(func=_cmd_run)
+
+    # run_multiple
+    multi_parser = subparsers.add_parser("run_multiple", help="Run multiple metrics")
+    multi_parser.add_argument("--metrics", required=True, help="Comma-separated metric names")
+    multi_parser.add_argument("--summary", required=True)
+    multi_parser.add_argument("--source")
+    multi_parser.add_argument("--reference")
+    multi_parser.set_defaults(func=_cmd_run_multiple)
+
+    # info
+    info_parser = subparsers.add_parser("info", help="Get info about a metric")
+    info_parser.add_argument("--metric", required=True)
+    info_parser.set_defaults(func=_cmd_info)
+
+    args = parser.parse_args()
+
+    if args.command is None:
+        parser.print_help()
+        return
+
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()

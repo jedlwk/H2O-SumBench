@@ -3,16 +3,16 @@
 Simple Agent Test for Summary Evaluation Metrics.
 
 This file implements a simple agent that can call evaluation metrics from
-src/evaluators/agent_tools.py as tools/functions for evaluating summaries.
+src/evaluators/tool_logic.py as tools/functions for evaluating summaries.
 
 The agent demonstrates:
 1. Tool schema definition for LLM function calling
-2. Tool execution via the agent_tools module
+2. Tool execution via the tool_logic module
 3. Multi-step evaluation workflow
 4. Result aggregation and interpretation
 
-Run with: python -m pytest tests/agent_test.py -v
-Or run directly: python tests/agent_test.py
+Run with: python -m pytest tests/test_simple_agent.py -v
+Or run directly: python tests/test_simple_agent.py
 """
 
 import os
@@ -173,7 +173,7 @@ class SummaryEvaluationAgent:
     def __init__(self):
         """Initialize the agent with tool functions."""
         # Import tool functions from agent_tools
-        from src.evaluators.agent_tools import (
+        from src.evaluators.tool_logic import (
             list_available_metrics,
             get_recommended_metrics,
             run_metric,
@@ -398,7 +398,7 @@ class TestEvaluationTools:
 
     def test_list_available_metrics(self):
         """Test that list_available_metrics returns expected format."""
-        from src.evaluators.agent_tools import list_available_metrics
+        from src.evaluators.tool_logic import list_available_metrics
 
         metrics = list_available_metrics()
 
@@ -415,7 +415,7 @@ class TestEvaluationTools:
 
     def test_get_recommended_metrics(self):
         """Test that get_recommended_metrics returns appropriate metrics."""
-        from src.evaluators.agent_tools import get_recommended_metrics
+        from src.evaluators.tool_logic import get_recommended_metrics
 
         # With source only
         metrics = get_recommended_metrics(has_source=True, has_reference=False)
@@ -428,7 +428,7 @@ class TestEvaluationTools:
 
     def test_get_metric_info(self):
         """Test that get_metric_info returns correct information."""
-        from src.evaluators.agent_tools import get_metric_info
+        from src.evaluators.tool_logic import get_metric_info
 
         info = get_metric_info('rouge')
 
@@ -439,7 +439,7 @@ class TestEvaluationTools:
 
     def test_run_metric_rouge(self):
         """Test running ROUGE metric via run_metric."""
-        from src.evaluators.agent_tools import run_metric
+        from src.evaluators.tool_logic import run_metric
 
         result = run_metric(
             metric_name='rouge',
@@ -455,7 +455,7 @@ class TestEvaluationTools:
 
     def test_run_metric_perplexity(self):
         """Test running Perplexity metric (no source required)."""
-        from src.evaluators.agent_tools import run_metric
+        from src.evaluators.tool_logic import run_metric
 
         result = run_metric(
             metric_name='perplexity',
@@ -470,7 +470,7 @@ class TestEvaluationTools:
 
     def test_run_metric_missing_required_source(self):
         """Test that metrics requiring source return error when source is missing."""
-        from src.evaluators.agent_tools import run_metric
+        from src.evaluators.tool_logic import run_metric
 
         result = run_metric(
             metric_name='nli',
@@ -483,7 +483,7 @@ class TestEvaluationTools:
 
     def test_run_multiple_metrics(self):
         """Test running multiple metrics at once."""
-        from src.evaluators.agent_tools import run_multiple_metrics
+        from src.evaluators.tool_logic import run_multiple_metrics
 
         results = run_multiple_metrics(
             metric_names=['rouge', 'bleu', 'levenshtein'],
@@ -640,7 +640,7 @@ class TestToolSchemas:
 
     def test_tool_schemas_match_functions(self):
         """Test that tool schemas match actual function signatures."""
-        from src.evaluators.agent_tools import (
+        from src.evaluators.tool_logic import (
             list_available_metrics,
             get_recommended_metrics,
             run_metric,
