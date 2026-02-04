@@ -45,6 +45,39 @@ def round_up_to_nearest_10(n):
   return (n + 9) // 10 * 10
 
 
+def truncate_to_sentence_boundary(text, max_words):
+    """
+    Truncate text to max_words while preserving complete sentences.
+
+    Args:
+        text: Input text to truncate
+        max_words: Maximum number of words allowed
+
+    Returns:
+        Truncated text ending at a sentence boundary
+    """
+    words = nltk.word_tokenize(text)
+    if len(words) <= max_words:
+        return text
+
+    # Find the last sentence boundary (., !, ?) before the cutoff
+    sentences = nltk.sent_tokenize(text)
+
+    result = ""
+    word_count = 0
+
+    for sentence in sentences:
+        sentence_words = nltk.word_tokenize(sentence)
+        if word_count + len(sentence_words) <= max_words:
+            result += sentence + " "
+            word_count += len(sentence_words)
+        else:
+            # This sentence would exceed the limit, stop here
+            break
+
+    return result.strip()
+
+
 def generate_summaries(
     input_file="cnn_dm_sample.json",
     output_file="cnn_dm_with_generated_summaries.json",
@@ -107,7 +140,8 @@ def generate_summaries(
 
             prompt = f"""
                 Summarize the article into 3-4 concise bullet points.
-                Ensure the total length is no more than {max_num_of_words} words.
+                STRICT REQUIREMENT: The summary MUST NOT exceed {max_num_of_words} words in total.
+                Keep each bullet point brief and complete. Do not start bullet points you cannot finish within the word limit.
             """
 
             # Generate summary using H2OGPTE
@@ -119,16 +153,16 @@ def generate_summaries(
 
             if summary_response.content:
                 generated_summary = summary_response.content
-
-                # Enforce word limit by truncating if necessary
                 summary_word_count = count_words(generated_summary)
-                if summary_word_count > max_num_of_words:
-                    words = nltk.word_tokenize(generated_summary)
-                    truncated_words = words[:max_num_of_words]
-                    generated_summary = ' '.join(truncated_words)
-                    print(f"  ⚠️  Summary truncated from {summary_word_count} to {max_num_of_words} words")
 
-                print(f"  ✓ Generated summary: {len(generated_summary)} characters ({count_words(generated_summary)} words)")
+                # Enforce word limit by truncating at sentence boundary if necessary
+                if summary_word_count > max_num_of_words:
+                    original_count = summary_word_count
+                    generated_summary = truncate_to_sentence_boundary(generated_summary, max_num_of_words)
+                    summary_word_count = count_words(generated_summary)
+                    print(f"  ⚠️  Summary truncated from {original_count} to {summary_word_count} words (at sentence boundary)")
+
+                print(f"  ✓ Generated summary: {len(generated_summary)} characters ({summary_word_count} words, target: {max_num_of_words} words)")
             else:
                 generated_summary = f"Error: {summary_response.error}"
                 print(f"  ✗ Error: {summary_response.error}")
