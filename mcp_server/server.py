@@ -10,7 +10,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from src.evaluators.tool_logic import (
     list_available_metrics,
-    get_recommended_metrics,
     run_metric,
     run_multiple_metrics,
     get_metric_info,
@@ -25,12 +24,6 @@ mcp = FastMCP("SumOmniEval MCP Server")
 def list_metrics():
     """List all available evaluation metrics."""
     return list_available_metrics()
-
-
-@mcp.tool()
-def recommend_metrics(has_source: bool = True, has_reference: bool = False, quick: bool = False):
-    """Get recommended metrics based on available inputs."""
-    return get_recommended_metrics(has_source, has_reference, quick)
 
 
 @mcp.tool()

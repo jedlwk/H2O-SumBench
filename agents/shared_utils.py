@@ -9,7 +9,7 @@ from jinja2 import Template, Environment, FileSystemLoader
 # Base paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(BASE_DIR)
-DATA_FILE = os.path.join(PROJECT_ROOT, 'data', 'processed', 'cnn_dm_sample_with_gen_sum.json')
+DATA_FILE = os.path.join(PROJECT_ROOT, 'data', 'processed', 'cnn_dm_sample_with_gen_sum_test.json')
 PROMPTS_DIR = os.path.join(BASE_DIR, 'prompts')
 
 

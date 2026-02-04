@@ -1,0 +1,4 @@
+{
+  "H2OGPTE_API_KEY": "os.environ/H2OGPTE_API_KEY",
+  "H2OGPTE_ADDRESS": "os.environ/H2OGPTE_SERVER_URL"
+}

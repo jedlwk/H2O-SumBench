@@ -80,13 +80,21 @@ def setup_collection(client: H2OGPTE, agent_type: str) -> str:
     if agent_type == "agent":
         client.add_custom_agent_tool(
             tool_type='general_code',
-            tool_args={'tool_name': 'tool_logic'},
+            tool_args={
+                'tool_name': 'tool_logic',
+                'enable_by_default': False,
+                'tool_usage_mode': 'runner'
+            },
             custom_tool_path=TOOL_FILE
         )
     else:  # agent_with_mcp
         client.add_custom_agent_tool(
             tool_type='local_mcp',
-            tool_args={'tool_name': 'sum_omni_eval_mcp'},
+            tool_args={
+                'tool_name': 'sum_omni_eval_mcp',
+                'enable_by_default': False,
+                'tool_usage_mode': 'creator'
+            },
             custom_tool_path=SERVER_FILE
         )
 
@@ -115,15 +123,22 @@ def run_evaluation(collection_id: str, client: H2OGPTE, agent_type: str, generat
         tool_name = "tool_logic"
     else:
         tool_name = "sum_omni_eval_mcp"
+    
+    # Select agent type
+    agent_type_str = "auto"
+    if agent_type == "agent":
+        agent_type_str = "general"
+    else:
+        agent_type_str = "mcp_tool_runner"
 
-    print(f"Running agent query with tool: {tool_name}...")
+    print(f"Running agent query with tool: {tool_name} and agent type: {agent_type_str}")
     with client.connect(chat_session_id) as session:
         reply = session.query(
             message=user_prompt,
             system_prompt=system_prompt,
             llm_args=dict(
                 use_agent=True,
-                agent_type="auto",
+                agent_type=agent_type_str,
                 agent_tools=[tool_name]
             )
         )

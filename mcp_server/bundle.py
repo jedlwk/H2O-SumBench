@@ -54,6 +54,14 @@ def build_mcp_zip(output_name: str = "sum_omni_eval_mcp.zip", cleanup: bool = Tr
     shutil.copy(server_src, dist_dir / "server.py")
     print(f"  Copied: server.py")
 
+    # Copy envs.json
+    envs_src = base_dir / "envs.json"
+    if envs_src.exists():
+        shutil.copy(envs_src, dist_dir / "envs.json")
+        print(f"  Copied: envs.json")
+    else:
+        print(f"  Warning: envs.json not found at {envs_src}")
+
     # Copy requirements.txt from project root
     req_src = project_root / "requirements.txt"
     if req_src.exists():
