@@ -61,12 +61,19 @@ Complete restructuring of the data folder following GitHub best practices with i
 - Added CNN/DailyMail dataset integration (Hermann et al., 2015)
 - Template files now demonstrate optional fields with variance
 
+#### Agent Utilities Simplification
+- Simplified `load_summaries()` to accept `sample_idx` integer
+- Changed `--sample` to `--sample-idx` for clarity
+- Uses actual field names (`summary` instead of `generated_summary`)
+
 ### Removed
 
 - **sample_summaries.json** - Obsolete test data file
 - **data/scripts/README.md** - Consolidated into main README
 - **data/raw/README.md** - Consolidated into main README
 - **data/processed/README.md** - Consolidated into main README
+- **ui/pages/1_Agent_Evaluation.py** - Only standalone eval on UI
+- **ui/pages/2_MCP_Dashboard.py** - Only standalone eval on UI
 
 ### Fixed
 
