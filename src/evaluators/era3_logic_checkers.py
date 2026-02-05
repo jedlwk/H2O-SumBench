@@ -207,12 +207,10 @@ def compute_factchecker_score(
         }
 
     try:
-        # Check if API is configured
-        from dotenv import load_dotenv
-        load_dotenv()
+        # Get credentials from shared module (supports MCP injection)
+        from .h2ogpte_client import get_credentials
 
-        api_key = os.getenv('H2OGPTE_API_KEY')
-        address = os.getenv('H2OGPTE_ADDRESS')
+        api_key, address = get_credentials()
 
         if not api_key or not address:
             return {

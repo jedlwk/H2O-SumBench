@@ -6,7 +6,7 @@ import os
 from typing import Dict, Optional
 
 # Load sample data as default
-DEFAULT_DATA = 'processed/cnn_dm_sample_with_gen_sum.json'
+DEFAULT_DATA = 'cnn_dm_sample_with_gen_sum.json'
 
 
 def load_sample_data(data_path: Optional[str] = None) -> pd.DataFrame:
@@ -97,10 +97,18 @@ def get_sample_by_index(index: int, data_path: Optional[str] = None) -> Dict[str
 
     row = df.iloc[index]
 
-    return {
+    result = {
         'source': row['report'],
         'summary': row['summary']
     }
+
+    # Include reference if available (support both column names)
+    if 'reference_summary' in df.columns:
+        result['reference'] = row['reference_summary']
+    elif 'reference' in df.columns:
+        result['reference'] = row['reference']
+
+    return result
 
 
 def get_sample_titles(data_path: Optional[str] = None, max_length: int = 100) -> list:

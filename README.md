@@ -2,9 +2,12 @@
 
 **Comprehensive Summarization Evaluation Framework**
 
-24 metrics across 2 evaluation stages to answer two questions:
-1. **Is this summary trustworthy?** (Stage 1: Source vs Summary)
-2. **Does it match expectations?** (Stage 2: Generated vs Reference)
+24 metrics across 5 evaluation dimensions.
+1. **Faithfulness:** Does the summary stick to the source without hallucinating?
+2. **Completeness:** How much of the essential source meaning was captured?
+3. **Semantic Alignment:** How well does the summary match the reference summary?
+4. **Surface Overlap:** How many specific words/phrases match the reference?
+5. **Linguistic Quality:** Is the output readable, logical and well structured?
 
 ---
 
@@ -79,7 +82,6 @@ python agents/h2o/orchestrator.py --agent-type agent_with_mcp --sample-idx 0
 
 The MCP server exposes these tools:
 - `list_metrics()` - List all available metrics
-- `recommend_metrics(has_source, has_reference)` - Get recommended metrics
 - `run_single_metric(metric_name, summary, source, reference)` - Run one metric
 - `run_multiple(metrics, summary, source, reference)` - Run multiple metrics
 - `get_info(metric_name)` - Get metric details
@@ -88,34 +90,56 @@ The MCP server exposes these tools:
 
 ## Metrics Overview
 
-### Stage 1: Source vs Summary (12 metrics)
-Checks if the summary is **accurate** and **complete** based on the original source.
+### 1. Faithfulness
+Does the summary stick to the source without hallucinating?
 
-| Metric | Type | What It Checks |
-|--------|------|----------------|
-| NLI | Local | Does source logically support summary? |
-| FactCC | Local | Is it factually consistent? |
-| AlignScore | Local | Unified consistency score |
-| Coverage Score | Local | Are named entities preserved? |
-| Semantic Coverage | Local | How many source sentences covered? |
+| Metric | Type | Description |
+|--------|------|-------------|
+| NLI | Local | Natural language inference - does source entail summary? |
+| FactCC | Local | BERT-based factual consistency classifier |
+| AlignScore | Local | Unified alignment score via RoBERTa |
+| G-Eval Faithfulness | API | LLM-judged factual accuracy |
+
+### 2. Completeness
+How much of the essential source meaning was captured?
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| Entity Coverage | Local | Are named entities preserved? |
+| Semantic Coverage | Local | % of source sentences semantically covered |
 | BERTScore Recall | Local | What % of source meaning captured? |
-| G-Eval (4 dims) | API | Relevance, Coherence, Faithfulness, Fluency |
-| DAG | API | 3-step decision tree evaluation |
-| Prometheus | API | Open-source LLM judge |
+| G-Eval Relevance | API | LLM-judged information coverage |
 
-### Stage 2: Generated vs Reference (12 metrics)
-Compares your summary against a "gold standard" reference.
+### 3. Semantic Alignment
+How well does the summary match the reference summary?
 
-| Metric | Type | What It Checks |
-|--------|------|----------------|
-| BERTScore | Local | Semantic similarity |
-| MoverScore | Local | Meaning transformation distance |
-| ROUGE-1/2/L | Local | Word and phrase overlap |
-| BLEU | Local | N-gram precision |
-| METEOR | Local | Matching with synonyms |
+| Metric | Type | Description |
+|--------|------|-------------|
+| BERTScore | Local | Contextual embedding similarity |
+| MoverScore | Local | Earth Mover's Distance on embeddings |
+| BARTScore | Local | Generation likelihood score |
+
+### 4. Surface Overlap
+How many specific words/phrases match the reference?
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| ROUGE-1/2/L | Local | Unigram, bigram, and longest common subsequence |
+| BLEU | Local | N-gram precision with brevity penalty |
+| METEOR | Local | Alignment with synonyms and stemming |
 | chrF++ | Local | Character-level F-score |
-| Levenshtein | Local | Edit distance |
-| Perplexity | Local | Fluency score |
+| Levenshtein | Local | Edit distance ratio |
+
+### 5. Linguistic Quality
+Is the output readable, logical and well structured?
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| Perplexity | Local | GPT-2 language model fluency |
+| G-Eval Fluency | API | LLM-judged grammatical quality |
+| G-Eval Coherence | API | LLM-judged logical flow |
+| DAG | API | Decision tree: accuracy, completeness, clarity |
+| Prometheus | API | Open-source LLM judge |
 
 ---
 
@@ -153,13 +177,13 @@ SumOmniEval/
 ├── requirements.txt            # Python dependencies
 ├── METRICS.md                  # Complete metrics documentation
 ├── .env.example                # Secrets and credentials
-├── config.yaml                     # Configuration (paths, models, etc)
 │
 ├── ui/                         # Streamlit application
 │   └── app.py                  # Main entry point (standalone evaluators)
 │
 ├── src/evaluators/
 │   ├── tool_logic.py           # Unified tool interface (CLI + library)
+│   ├── h2ogpte_client.py       # Shared H2OGPTe client module
 │   ├── era1_word_overlap.py    # ROUGE, BLEU, METEOR, etc.
 │   ├── era2_embeddings.py      # BERTScore, MoverScore
 │   ├── era3_logic_checkers.py  # NLI, FactCC, AlignScore
@@ -176,6 +200,7 @@ SumOmniEval/
 │
 ├── mcp_server/
 │   ├── server.py               # MCP server implementation
+│   ├── envs.json               # Environment variables JSON
 │   └── bundle.py               # Bundle server for deployment
 │
 ├── data/
@@ -249,8 +274,11 @@ See [METRICS.md](METRICS.md) for alternatives.
 
 ## Version
 
+- **v2.3** - MCP warmup, system installation and dynamic Jinja2 prompt
+- **v2.2** - Restructure data folder, pipeline and documentation
 - **v2.1** - Added agent integration and MCP server support
 - **v2.0** - 24 metrics, educational UI
+- **v1.0** - 15 metrics
 
 ## License
 

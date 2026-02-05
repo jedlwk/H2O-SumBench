@@ -1,6 +1,16 @@
 """
 Agent-Ready Wrapper Functions for Summary Evaluation Metrics.
 
+**IMPORTANT FOR H2OGPTE AGENTS:**
+This module must be called as a CLI tool, NOT imported as a Python module.
+H2OGPTE agents should execute commands like:
+    python -m src.evaluators.tool_logic run_multiple --metrics "rouge,bertscore" --summary "..." --source "..."
+
+The CLI interface returns JSON to stdout for agent consumption.
+Direct Python imports are supported for non-agent use cases only.
+
+---
+
 This module provides wrapper functions for all evaluation metrics, designed
 for tool/function calling by AI agents. Each function has a standardized
 interface with clear input/output schemas suitable for LLM function calling.
@@ -11,7 +21,7 @@ All wrapper functions:
 - Include comprehensive docstrings for automatic schema generation
 - Do not modify the underlying evaluation functions
 
-Usage:
+Usage (Non-Agent Python Import):
     from src.evaluators.tool_logic import evaluate_rouge, evaluate_bertscore, list_available_metrics
 
     # Run a single metric
@@ -22,6 +32,11 @@ Usage:
 
     # Run a metric by name
     result = run_metric("rouge", summary="...", source="...")
+
+Usage (H2OGPTE Agent CLI):
+    python -m src.evaluators.tool_logic list_metrics
+    python -m src.evaluators.tool_logic recommend --has-source --has-reference
+    python -m src.evaluators.tool_logic run_multiple --metrics "rouge,bertscore" --summary "..." --source "..."
 """
 
 import json
@@ -1813,45 +1828,6 @@ def run_multiple_metrics(
     return results
 
 
-def get_recommended_metrics(
-    has_source: bool = True,
-    has_reference: bool = False,
-    quick_mode: bool = False
-) -> List[str]:
-    """
-    Get recommended metrics based on available inputs and speed preference.
-
-    Args:
-        has_source: Whether source document is available. Default True.
-        has_reference: Whether reference summary is available. Default False.
-        quick_mode: If True, recommend only fast metrics. Default False.
-
-    Returns:
-        List of recommended metric names.
-
-    Example:
-        >>> metrics = get_recommended_metrics(has_source=True, has_reference=False)
-        >>> # Returns: ['rouge', 'bertscore', 'nli', 'alignscore', ...]
-    """
-    if quick_mode:
-        # Fast metrics only
-        recommended = ['rouge', 'bleu', 'perplexity']
-        if has_source:
-            recommended.append('nli')
-        return recommended
-
-    # Standard recommendations
-    recommended = ['rouge', 'bertscore', 'perplexity']
-
-    if has_source:
-        recommended.extend(['nli', 'alignscore', 'entity_coverage', 'semantic_coverage'])
-
-    if has_reference:
-        recommended.extend(['meteor', 'bleu'])
-
-    return recommended
-
-
 # =============================================================================
 # CLI INTERFACE FOR AGENTS
 # =============================================================================
@@ -1873,21 +1849,6 @@ def _cmd_list_metrics(args):
         })
 
     print(json.dumps({"metrics_by_category": by_category}, indent=2))
-
-
-def _cmd_recommend(args):
-    """Get recommended metrics based on inputs."""
-    recommended = get_recommended_metrics(
-        has_source=args.has_source,
-        has_reference=args.has_reference,
-        quick_mode=args.quick
-    )
-    print(json.dumps({
-        "recommended_metrics": recommended,
-        "has_source": args.has_source,
-        "has_reference": args.has_reference,
-        "quick_mode": args.quick
-    }, indent=2))
 
 
 def _cmd_run(args):
@@ -1923,7 +1884,15 @@ def _cmd_info(args):
 
 
 def main():
-    """CLI entry point for agent tool calling."""
+    """
+    CLI entry point for H2OGPTE agent tool calling.
+
+    This is the primary interface for H2OGPTE agents. Agents execute this
+    script via shell commands as a module:
+        python -m src.evaluators.tool_logic <command> <args>
+
+    All commands return JSON to stdout for parsing.
+    """
     parser = argparse.ArgumentParser(
         description="Summary Evaluation Tool for AI Agents"
     )
@@ -1932,13 +1901,6 @@ def main():
     # list_metrics
     list_parser = subparsers.add_parser("list_metrics", help="List all available metrics")
     list_parser.set_defaults(func=_cmd_list_metrics)
-
-    # recommend
-    rec_parser = subparsers.add_parser("recommend", help="Get recommended metrics")
-    rec_parser.add_argument("--has-source", action="store_true")
-    rec_parser.add_argument("--has-reference", action="store_true")
-    rec_parser.add_argument("--quick", action="store_true")
-    rec_parser.set_defaults(func=_cmd_recommend)
 
     # run
     run_parser = subparsers.add_parser("run", help="Run a specific metric")

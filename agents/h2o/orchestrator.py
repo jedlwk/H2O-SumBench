@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from dotenv import load_dotenv
 from h2ogpte import H2OGPTE
-from shared_utils import load_prompt, load_summaries
+from shared_utils import load_prompt, load_summaries, render_dynamic_prompt
 
 BASE_DIR = os.path.dirname(__file__)
 TOOL_FILE = os.path.join(BASE_DIR, '..', '..', 'src', 'evaluators', 'tool_logic.py')
@@ -80,42 +80,98 @@ def setup_collection(client: H2OGPTE, agent_type: str) -> str:
     if agent_type == "agent":
         client.add_custom_agent_tool(
             tool_type='general_code',
-            tool_args={'tool_name': 'tool_logic'},
+            tool_args={
+                'tool_name': 'tool_logic',
+                'enable_by_default': False,
+                'tool_usage_mode': 'runner'
+            },
             custom_tool_path=TOOL_FILE
         )
     else:  # agent_with_mcp
         client.add_custom_agent_tool(
             tool_type='local_mcp',
-            tool_args={'tool_name': 'sum_omni_eval_mcp'},
+            tool_args={
+                'tool_name': 'sum_omni_eval_mcp',
+                'enable_by_default': False,
+                'tool_usage_mode': 'runner'
+            },
             custom_tool_path=SERVER_FILE
         )
 
     return collection_id
 
 
-def run_evaluation(client: H2OGPTE, generated_summary: str, reference_summary: str = None, source: str = None) -> str:
+def run_evaluation(collection_id: str, client: H2OGPTE, agent_type: str, generated_summary: str, reference_summary: str = None, source: str = None) -> str:
     """Run the agent evaluation on the given summaries."""
-    chat_session_id = client.create_chat_session()
+    chat_session_id = client.create_chat_session(collection_id)
     print(f"Chat session created: {chat_session_id}")
+
+    # Select tool based on agent type
+    tool_name = ""
+    if agent_type == "agent":
+        tool_name = "tool_logic"
+    else:
+        tool_name = "sum_omni_eval_mcp"
+
+    # Select agent type
+    agent_type_str = "auto"
+    if agent_type == "agent":
+        agent_type_str = "general"
+    else:
+        agent_type_str = "mcp_tool_runner"
+
+    # Warmup: ensure MCP server is fully initialized before running evaluation
+    if agent_type == "agent_with_mcp":
+        max_retries = 3
+        retry_delay = 5  # seconds
+
+        for attempt in range(1, max_retries + 1):
+            print(f"Warming up MCP server (attempt {attempt}/{max_retries})...")
+            with client.connect(chat_session_id) as session:
+                warmup_reply = session.query(
+                    message="Call check_env_var to verify the MCP server is ready. Only respond with SUCCESS or FAILURE.",
+                    llm_args=dict(
+                        use_agent=True,
+                        agent_type=agent_type_str,
+                        agent_tools=[tool_name]
+                    )
+                )
+
+            response_text = warmup_reply.content.upper()
+            if "SUCCESS" in response_text:
+                print("MCP server ready - environment variables configured")
+                break
+            else:
+                print(f"MCP server not ready: {warmup_reply.content[:100]}...")
+                if attempt < max_retries:
+                    print(f"Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                else:
+                    raise RuntimeError(
+                        f"MCP server failed to initialize after {max_retries} attempts. "
+                        "Environment variables may not be configured correctly."
+                    )
 
     # Load prompts
     system_prompt = load_prompt('system.md')
-    user_prompt_template = load_prompt('user.md')
 
-    user_prompt = user_prompt_template.format(
+    # Render dynamic prompt
+    user_prompt = render_dynamic_prompt(
+        'user.md',
         generated_summary=generated_summary,
-        reference_summary=reference_summary or "Not provided",
-        source=source or "Not provided",
+        reference_summary=reference_summary,
+        source=source
     )
 
-    print("Running agent query...")
+    print(f"Running agent query with tool: {tool_name} and agent type: {agent_type_str}")
     with client.connect(chat_session_id) as session:
         reply = session.query(
-            user_prompt,
+            message=user_prompt,
+            system_prompt=system_prompt,
             llm_args=dict(
                 use_agent=True,
-                agent_type="auto",
-                agent_code_writer_system_message=system_prompt
+                agent_type=agent_type_str,
+                agent_tools=[tool_name]
             )
         )
 
@@ -124,18 +180,20 @@ def run_evaluation(client: H2OGPTE, generated_summary: str, reference_summary: s
 
 def main(sample_idx: str = "0", agent_type: str = "agent"):
     """Main entry point."""
-    # Load sample data (field mapping is applied automatically)
+    # Load sample data
     sample = load_summaries(sample_idx=int(sample_idx))
     sample_id = sample.get('id', sample_idx)
     print(f"Loaded sample: {sample_id}")
 
     # Create client and setup
     client = create_client()
-    setup_collection(client, agent_type)
+    collection_id = setup_collection(client, agent_type)
 
     # Run evaluation
     response = run_evaluation(
+        collection_id=collection_id,
         client=client,
+        agent_type=agent_type,
         generated_summary=sample['summary'],
         reference_summary=sample.get('reference_summary'),
         source=sample.get('source')

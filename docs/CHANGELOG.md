@@ -4,6 +4,82 @@ All notable changes to this project are documented here.
 
 ---
 
+## [2.3.0] - 2026-02-06
+
+### Agent and MCP Server Enhancements
+
+Major improvements to agent orchestration and MCP server configuration for reliable H2OGPTE integration.
+
+### Added
+
+#### MCP Server Infrastructure
+- **check_env_var()** - New MCP tool to verify environment variable access
+  - Tests H2OGPTE_API_KEY and H2OGPTE_ADDRESS availability
+  - Writes success/failure status to diagnostic files
+  - Enables MCP server health checks
+- **System dependencies install** - Automatic pip install on MCP server startup
+  - Reads from bundled requirements.txt
+  - Ensures dependencies are available in H2OGPTE environment
+- **envs.json configuration** - Environment variable mapping for MCP tools
+  - Uses `os.environ/VAR_NAME` syntax for H2OGPTE credential injection
+  - Enables secure credential passing to MCP server process
+
+#### Orchestrator Improvements
+- **MCP server warmup with retry loop** - Ensures server readiness before evaluation
+  - Max 3 retries with 5-second backoff
+  - Checks for SUCCESS response before proceeding
+  - Fails fast with clear error if initialization fails
+- **Collection-based chat sessions** - Refactored agent workflow
+  - Creates collection, uploads tool, then runs evaluation
+  - Proper separation of setup and execution phases
+
+#### H2OGPTE Client
+- **h2ogpte_client.py** - Abstracted client initialization
+  - Centralized credential management
+  - `get_credentials()` and `get_h2ogpte_client()` helper functions
+  - Consistent client creation across all LLM metrics
+
+### Changed
+
+#### Prompt System
+- **Dynamic Jinja2 rendering** - User prompts now use template variables
+  - `{{ generated_summary }}`, `{{ source }}`, `{{ reference_summary }}`
+  - Conditional sections based on available inputs
+  - Scenario-based metric selection (Source+Reference / Source Only / Reference Only / None)
+- **System prompt enhancements** - Added interpretation guidelines
+  - Tone and style instructions for consistent agent responses
+  - Metric result formatting requirements
+
+#### Agent Configuration
+- **agent_type parameter** - Supports `agent` and `agent_with_mcp` modes
+- **agent_tools configuration** - Explicit tool registration (`tool_logic` or `sum_omni_eval_mcp`)
+- **tool_usage_mode** - Changed from `creator` to `runner` for direct MCP tool invocation
+  - `creator` mode caused agent to write Python scripts (wrong process, no env vars)
+  - `runner` mode enables direct MCP tool calls (correct process, env vars available)
+
+#### Data Generation
+- **Stricter summary generation prompt** - Improved summary quality
+- **Sentence boundary truncation** - Summaries now respect sentence boundaries
+  - Prevents mid-sentence cutoffs
+  - Cleaner evaluation inputs
+
+### Fixed
+
+- **MCP credential flow** - Environment variables now correctly passed to MCP tools
+  - Root cause: `tool_usage_mode='creator'` spawned separate Python process
+  - Fix: Changed to `tool_usage_mode='runner'` for in-process execution
+- **Cold start timing issue** - Added warmup query before evaluation
+  - First MCP call sometimes failed due to initialization delay
+  - Retry loop ensures server is ready before actual evaluation
+- **app.py** - Minor bug fixes in Streamlit application
+- **data_loader.py** - Minor bug fixes in data loading utilities
+
+### Removed
+
+- **get_recommended_metrics tool** - No longer necessary with dynamic prompts
+
+---
+
 ## [2.2.0] - 2026-02-03
 
 ### Data Folder Reorganization
@@ -608,6 +684,7 @@ See LICENSE file
 
 | Version | Focus Area | Key Achievement |
 |---------|-----------|-----------------|
+| 2.3.0 | Agent & MCP | MCP warmup, credential flow fix, dynamic prompts |
 | 2.2.0 | Data Infrastructure | Organized data pipeline with CNN/DM integration |
 | 2.1.0 | Agent Integration | MCP server and orchestrator agent |
 | 2.0.0 | Architecture | Agent-ready standardization of 24 metrics |
@@ -616,6 +693,6 @@ See LICENSE file
 
 ---
 
-**Current Version**: 2.2.0
-**Release Date**: 2026-02-03
+**Current Version**: 2.3.0
+**Release Date**: 2026-02-06
 **Status**: Production Ready ✅

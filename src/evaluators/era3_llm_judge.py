@@ -6,23 +6,12 @@ Uses H2OGPTE API to evaluate summaries using powerful LLMs.
 Implements G-Eval, DAG and Prometheus.
 """
 
-import os
 from typing import Dict, Any, Optional
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
-
-# Module-level configuration
-_API_KEY = os.getenv('H2OGPTE_API_KEY')
-_ADDRESS = os.getenv('H2OGPTE_ADDRESS')
-_client = None
 
 
 def get_client():
     """
-    Get or create the H2OGPTE client.
-    Lazy loads the client on first use.
+    Get the H2OGPTE client from the shared module.
 
     Returns:
         H2OGPTE client instance
@@ -30,20 +19,8 @@ def get_client():
     Raises:
         ValueError: If API credentials are not set
     """
-    global _client
-
-    if not _API_KEY or not _ADDRESS:
-        raise ValueError(
-            "H2OGPTE_API_KEY and H2OGPTE_ADDRESS must be set in .env file"
-        )
-
-    if _client is None:
-        from h2ogpte import H2OGPTE
-        _client = H2OGPTE(
-            address=_ADDRESS,
-            api_key=_API_KEY,
-        )
-    return _client
+    from .h2ogpte_client import get_h2ogpte_client
+    return get_h2ogpte_client()
 
 
 def create_faithfulness_prompt(source: str, summary: str) -> str:

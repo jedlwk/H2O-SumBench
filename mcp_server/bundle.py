@@ -54,6 +54,14 @@ def build_mcp_zip(output_name: str = "sum_omni_eval_mcp.zip", cleanup: bool = Tr
     shutil.copy(server_src, dist_dir / "server.py")
     print(f"  Copied: server.py")
 
+    # Copy envs.json
+    envs_src = base_dir / "envs.json"
+    if envs_src.exists():
+        shutil.copy(envs_src, dist_dir / "envs.json")
+        print(f"  Copied: envs.json")
+    else:
+        print(f"  Warning: envs.json not found at {envs_src}")
+
     # Copy requirements.txt from project root
     req_src = project_root / "requirements.txt"
     if req_src.exists():
@@ -62,17 +70,18 @@ def build_mcp_zip(output_name: str = "sum_omni_eval_mcp.zip", cleanup: bool = Tr
     else:
         print(f"  Warning: requirements.txt not found at {req_src}")
 
-    # Copy src directory (excluding __pycache__)
-    src_dir = project_root / "src"
-    if not src_dir.exists():
-        raise FileNotFoundError(f"src directory not found at {src_dir}")
+    # Copy evaluators directory (flattened - not nested in src/)
+    # This allows the bundled server to import via `from evaluators.tool_logic import ...`
+    evaluators_dir = project_root / "src" / "evaluators"
+    if not evaluators_dir.exists():
+        raise FileNotFoundError(f"evaluators directory not found at {evaluators_dir}")
 
     def copy_filter(directory, files):
         """Filter out excluded files and directories."""
         return [f for f in files if should_exclude(f)]
 
-    shutil.copytree(src_dir, dist_dir / "src", ignore=copy_filter)
-    print(f"  Copied: src/ directory")
+    shutil.copytree(evaluators_dir, dist_dir / "evaluators", ignore=copy_filter)
+    print(f"  Copied: evaluators/ directory")
 
     # Create zip file
     zip_path = base_dir / output_name

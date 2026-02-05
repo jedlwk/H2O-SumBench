@@ -1,4 +1,4 @@
 """SumOmniEval: Text Summarization Evaluation Tool."""
 
-__version__ = "1.0.0"
-__author__ = "Your Name"
+__version__ = "2.3.0"
+__author__ = "Justin Siow"
