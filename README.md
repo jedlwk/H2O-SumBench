@@ -99,8 +99,6 @@ python agents/h2o/orchestrator.py --agent-type agent_with_mcp --sample-idx 0 --d
 
 **MCP Server Tools:**
 
-- `check_env_var()` - Verify MCP server is ready (env setup takes time)
-  - Prompt: "Call check_env_var to verify the MCP server is ready. Only respond with SUCCESS or FAILURE."
 - `list_metrics()` - List all available metrics
 - `run_single_metric(metric_name, summary, source, reference)` - Run one metric
 - `run_multiple(metrics, summary, source, reference)` - Run multiple metrics
