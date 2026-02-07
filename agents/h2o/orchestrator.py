@@ -42,6 +42,40 @@ def create_client() -> H2OGPTE:
     return client
 
 
+def _setup_agent_keys(client: H2OGPTE) -> None:
+    """Ensure agent keys for MCP env vars exist, reusing or creating as needed."""
+    required_keys = {
+        "H2OGPTE_API_KEY": os.getenv('H2OGPTE_API_KEY'),
+        "H2OGPTE_ADDRESS": os.getenv('H2OGPTE_ADDRESS'),
+    }
+
+    # Check for existing keys
+    existing = {k['name']: k['id'] for k in client.get_agent_keys()
+                if k['name'] in required_keys}
+
+    # Create missing keys
+    for name, value in required_keys.items():
+        if name not in existing:
+            result = client.add_agent_key([
+                {"name": name, "value": value, "key_type": "private",
+                 "description": f"{name} for MCP server"}
+            ])
+            existing[name] = result[0]["agent_key_id"]
+            print(f"  Created agent key: {name}")
+        else:
+            print(f"  Reusing agent key: {name}")
+
+    # Associate keys with the MCP tool
+    client.assign_agent_key_for_tool([{
+        "tool_dict": {
+            "tool": SERVER_FILENAME,
+            "keys": [{"name": name, "key_id": kid}
+                     for name, kid in existing.items()]
+        }
+    }])
+    print("Agent keys associated with MCP tool")
+
+
 def setup_collection(client: H2OGPTE, agent_type: str) -> str:
     """Create collection and ingest the evaluation tool."""
     # Create collection based on agent type
@@ -106,6 +140,10 @@ def setup_collection(client: H2OGPTE, agent_type: str) -> str:
             },
             custom_tool_path=SERVER_FILE
         )
+
+        # Ensure agent keys exist and associate them with the MCP tool
+        # so environment variables are injected into the MCP server process
+        _setup_agent_keys(client)
 
     return collection_id
 
