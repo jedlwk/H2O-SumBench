@@ -54,35 +54,6 @@ mcp = FastMCP("H2O.ai SumBench MCP Server")
 
 
 @mcp.tool()
-def check_env_var() -> str:
-    """Test environment variable configuration for API access."""
-    import os
-
-    api_key = os.environ.get('H2OGPTE_API_KEY')
-    address = os.environ.get('H2OGPTE_ADDRESS')
-
-    if api_key and address:
-        with open("success.txt", "w") as f:
-            f.write(f"SUCCESS: Environment variable H2OGPTE_API_KEY is set to: {api_key[:10]}...\n")
-            f.write(f"SUCCESS: Environment variable H2OGPTE_ADDRESS is set to: {address}\n")
-        return f"SUCCESS: Environment variables H2OGPTE_API_KEY and H2OGPTE_ADDRESS are accessible."
-    else:
-        with open("failure.txt", "w") as f:
-            if not api_key:
-                f.write("FAILURE: Environment variable H2OGPTE_API_KEY is not set\n")
-            if not address:
-                f.write("FAILURE: Environment variable H2OGPTE_ADDRESS is not set\n")
-
-        missing = []
-        if not api_key:
-            missing.append("H2OGPTE_API_KEY")
-        if not address:
-            missing.append("H2OGPTE_ADDRESS")
-
-        return f"FAILURE: Environment variables not set: {', '.join(missing)}"
-
-
-@mcp.tool()
 def list_metrics():
     """List all available evaluation metrics."""
     return list_available_metrics()
