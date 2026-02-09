@@ -2,7 +2,7 @@
 
 **Comprehensive Summarization Evaluation Framework**
 
-17 metrics across 5 evaluation dimensions.
+24 metrics across 5 evaluation dimensions.
 1. **Faithfulness:** Does the summary stick to the source without hallucinating?
 2. **Completeness:** How much of the essential source meaning was captured?
 3. **Semantic Alignment:** How well does the summary match the reference summary?
@@ -105,6 +105,9 @@ Does the summary stick to the source without hallucinating?
 
 | Metric | Type | Description |
 |--------|------|-------------|
+| NLI | Local | Natural language inference - does source entail summary? |
+| FactCC | Local | BERT-based factual consistency classifier |
+| AlignScore | Local | Unified alignment score via RoBERTa |
 | G-Eval Faithfulness | API | LLM-judged factual accuracy |
 | FactChecker | API | LLM-based fact-checking against source |
 
@@ -124,6 +127,8 @@ How well does the summary match the reference summary?
 | Metric | Type | Description |
 |--------|------|-------------|
 | BERTScore | Local | Contextual embedding similarity |
+| MoverScore | Local | Earth Mover's Distance on embeddings |
+| BARTScore | Local | Generation likelihood score |
 
 ### 4. Surface Overlap
 How many specific words/phrases match the reference?
@@ -155,12 +160,15 @@ All local models download automatically on first use:
 
 | Model | Size | Used By |
 |-------|------|---------|
-| roberta-large | ~1.4GB | BERTScore |
+| roberta-large | ~1.4GB | BERTScore, AlignScore |
+| deberta-v3-base | ~440MB | NLI |
+| deberta-base-mnli | ~440MB | FactCC |
+| distilbert | ~260MB | MoverScore |
 | GPT-2 | ~600MB | Perplexity |
 | MiniLM-L6 | ~80MB | Semantic Coverage |
-| spaCy en_core_web_sm | ~12MB | Entity Coverage |
+| spaCy en_core_web_sm | ~12MB | Coverage Score |
 
-**Total: ~2-3GB** (models cached after first download)
+**Total: ~5-6GB** (models cached after first download)
 
 ---
 
@@ -180,8 +188,8 @@ H2O SumBench/
 │   │   ├── tool_logic.py           # Unified tool interface (CLI + library)
 │   │   ├── h2ogpte_client.py       # Shared H2OGPTe client module
 │   │   ├── era1_word_overlap.py    # ROUGE, BLEU, METEOR, etc.
-│   │   ├── era2_embeddings.py      # BERTScore
-│   │   ├── era3_logic_checkers.py  # Entity Coverage
+│   │   ├── era2_embeddings.py      # BERTScore, MoverScore
+│   │   ├── era3_logic_checkers.py  # NLI, FactCC, AlignScore, Entity Coverage
 │   │   ├── era3_llm_judge.py       # G-Eval, DAG, Prometheus
 │   │   └── completeness_metrics.py # Semantic Coverage, BERTScore Recall
 │   └── utils/
@@ -226,7 +234,7 @@ H2O SumBench/
 ## Documentation
 
 - **[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)** - First-time setup walkthrough
-- **[docs/METRICS.md](docs/METRICS.md)** - Complete guide to all 17 metrics
+- **[docs/METRICS.md](docs/METRICS.md)** - Complete guide to all 24 metrics
 - **[docs/SETUP.md](docs/SETUP.md)** - Installation troubleshooting
 
 ---
