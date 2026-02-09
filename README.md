@@ -2,7 +2,7 @@
 
 **Comprehensive Summarization Evaluation Framework**
 
-24 metrics across 5 evaluation dimensions.
+17 metrics across 5 evaluation dimensions.
 1. **Faithfulness:** Does the summary stick to the source without hallucinating?
 2. **Completeness:** How much of the essential source meaning was captured?
 3. **Semantic Alignment:** How well does the summary match the reference summary?
@@ -14,39 +14,30 @@
 ## Quick Start
 
 ```bash
-# 1. One-shot install (dependencies + spaCy model + NLTK data)
+# 1. One-shot install (creates .venv, installs all dependencies)
 python setup.py
 
-# 2. (Optional) Configure API for LLM metrics
-cp .env.example .env
+# 2. Activate the virtual environment
+source .venv/bin/activate        # macOS / Linux
+.venv\Scripts\activate           # Windows
 
 # 3. Launch
 streamlit run ui/app.py
 ```
-
-<details>
-<summary>Manual install (if you prefer)</summary>
-
-```bash
-pip install -r requirements.txt
-python -m spacy download en_core_web_sm
-python -c "import nltk; nltk.download('punkt_tab')"
-```
-</details>
 
 ---
 
 ## Three Ways to Use H2O SumBench
 
 ### 1. Standalone Evaluators
-Use metrics directly in your code or as a interactive web app.
+Use metrics directly in your code or as an interactive web app.
 
-Option 1: Use in Streamlit
+**Streamlit UI:**
 ```bash
 streamlit run ui/app.py
 ```
 
-Option 2: Use as Python Library
+**Python Library:**
 ```python
 from src.evaluators.tool_logic import run_metric, run_multiple_metrics, list_available_metrics
 
@@ -77,7 +68,7 @@ Let an AI agent use the evaluation metrics as callable tools via H2OGPTE.
 # Default: Run agent on CNN/DM dataset
 python agents/h2o/orchestrator.py --agent-type agent --sample-idx 0
 
-# Run agent on Custom dataset
+# Run agent on custom dataset
 python agents/h2o/orchestrator.py --agent-type agent --sample-idx 0 --data-file data/processed/YOUR_FILE.json
 ```
 
@@ -93,16 +84,15 @@ python mcp_server/bundle.py
 # Default: Run agent on CNN/DM dataset
 python agents/h2o/orchestrator.py --agent-type agent_with_mcp --sample-idx 0
 
-# Run agent on Custom dataset
+# Run agent on custom dataset
 python agents/h2o/orchestrator.py --agent-type agent_with_mcp --sample-idx 0 --data-file data/processed/YOUR_FILE.json
 ```
 
 **MCP Server Tools:**
 
-- `list_metrics()` - List all available metrics
-- `run_single_metric(metric_name, summary, source, reference)` - Run one metric
-- `run_multiple(metrics, summary, source, reference)` - Run multiple metrics
-- `get_info(metric_name)` - Get metric details
+- `evaluate_summary(summary, source, reference)` - Auto-selects and runs all appropriate metrics based on available inputs
+- `list_metrics()` - List all 17 available metrics with categories and score ranges
+- `get_info(metric_name)` - Get detailed information about a specific metric
 
 **Note:** The orchestrator automatically creates Agent Keys via the H2OGPTE API to inject `H2OGPTE_API_KEY` and `H2OGPTE_ADDRESS` into the MCP server process. Keys are reused across runs.
 
@@ -115,10 +105,8 @@ Does the summary stick to the source without hallucinating?
 
 | Metric | Type | Description |
 |--------|------|-------------|
-| NLI | Local | Natural language inference - does source entail summary? |
-| FactCC | Local | BERT-based factual consistency classifier |
-| AlignScore | Local | Unified alignment score via RoBERTa |
 | G-Eval Faithfulness | API | LLM-judged factual accuracy |
+| FactChecker | API | LLM-based fact-checking against source |
 
 ### 2. Completeness
 How much of the essential source meaning was captured?
@@ -136,8 +124,6 @@ How well does the summary match the reference summary?
 | Metric | Type | Description |
 |--------|------|-------------|
 | BERTScore | Local | Contextual embedding similarity |
-| MoverScore | Local | Earth Mover's Distance on embeddings |
-| BARTScore | Local | Generation likelihood score |
 
 ### 4. Surface Overlap
 How many specific words/phrases match the reference?
@@ -163,30 +149,18 @@ Is the output readable, logical and well structured?
 
 ---
 
-## Evaluation Modes
-
-| Mode | Metrics | Time | Requirements |
-|------|---------|------|--------------|
-| **Local Only** | 14 | ~30s | None |
-| **Full Suite** | 24 | ~2min | H2OGPTE API key |
-
----
-
 ## Model Storage
 
 All local models download automatically on first use:
 
 | Model | Size | Used By |
 |-------|------|---------|
-| roberta-large | ~1.4GB | BERTScore, AlignScore |
-| deberta-v3-base | ~440MB | NLI |
-| deberta-base-mnli | ~440MB | FactCC |
-| distilbert | ~260MB | MoverScore |
+| roberta-large | ~1.4GB | BERTScore |
 | GPT-2 | ~600MB | Perplexity |
 | MiniLM-L6 | ~80MB | Semantic Coverage |
-| spaCy en_core_web_sm | ~12MB | Coverage Score |
+| spaCy en_core_web_sm | ~12MB | Entity Coverage |
 
-**Total: ~5-6GB** (models cached after first download)
+**Total: ~2-3GB** (models cached after first download)
 
 ---
 
@@ -196,7 +170,7 @@ All local models download automatically on first use:
 H2O SumBench/
 ├── setup.py                        # One-shot install script
 ├── requirements.txt                # Python dependencies
-├── .env.example                    # Secrets and credentials
+├── .env.example                    # API credentials (for LLM Judge metrics)
 │
 ├── ui/                             # Streamlit application
 │   └── app.py                      # Main entry point (standalone evaluators)
@@ -206,11 +180,9 @@ H2O SumBench/
 │   │   ├── tool_logic.py           # Unified tool interface (CLI + library)
 │   │   ├── h2ogpte_client.py       # Shared H2OGPTe client module
 │   │   ├── era1_word_overlap.py    # ROUGE, BLEU, METEOR, etc.
-│   │   ├── era2_embeddings.py      # BERTScore, MoverScore
-│   │   ├── moverscore_v2_patched.py # Vendored MoverScore with CPU fix
-│   │   ├── moverscore_wrapper.py   # MoverScore wrapper
-│   │   ├── era3_logic_checkers.py  # NLI, FactCC, AlignScore
-│   │   ├── era3_llm_judge.py      # G-Eval, DAG, Prometheus
+│   │   ├── era2_embeddings.py      # BERTScore
+│   │   ├── era3_logic_checkers.py  # Entity Coverage
+│   │   ├── era3_llm_judge.py       # G-Eval, DAG, Prometheus
 │   │   └── completeness_metrics.py # Semantic Coverage, BERTScore Recall
 │   └── utils/
 │       ├── force_cpu.py            # Force CPU-only PyTorch mode
@@ -238,10 +210,8 @@ H2O SumBench/
 │   └── scripts/                    # Data processing pipeline
 │
 ├── tests/
-│   ├── test_all_metrics.py         # Comprehensive pytest test suite
-│   ├── test_h2ogpte_api.py         # API connection tests
-│   ├── test_h2ogpte_agent.py       # Agent tool integration
-│   └── test_simple_agent.py        # Simple agent framework demo
+│   ├── test_all_metrics.py         # Evaluator metric tests
+│   └── test_mcp_server.py          # MCP server layer tests
 │
 └── docs/
     ├── GETTING_STARTED.md          # First-time user guide
@@ -253,27 +223,10 @@ H2O SumBench/
 
 ---
 
-## API Configuration
-
-For G-Eval, DAG, and Prometheus metrics:
-
-```bash
-# .env file
-H2OGPTE_API_KEY=your_key_here
-H2OGPTE_ADDRESS=https://your-instance.h2ogpte.com
-```
-
-**Available LLM Models:**
-- `meta-llama/Llama-3.3-70B-Instruct` (default)
-- `meta-llama/Meta-Llama-3.1-70B-Instruct`
-- `deepseek-ai/DeepSeek-R1`
-
----
-
 ## Documentation
 
 - **[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)** - First-time setup walkthrough
-- **[docs/METRICS.md](docs/METRICS.md)** - Complete guide to all 24 metrics
+- **[docs/METRICS.md](docs/METRICS.md)** - Complete guide to all 17 metrics
 - **[docs/SETUP.md](docs/SETUP.md)** - Installation troubleshooting
 
 ---
