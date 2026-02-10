@@ -903,6 +903,111 @@ def evaluate_prometheus(
         }
 
 
+def create_custom_judge_prompt(
+    criteria: str,
+    source: str,
+    summary: str,
+    reference_summary: str = None
+) -> str:
+    """
+    Build an evaluation prompt by substituting placeholders in a user-supplied template.
+
+    The user provides a full prompt template containing placeholders:
+        {PROMPT}          - replaced with the source document / input question
+        {PREDICTED_TEXT}   - replaced with the generated summary / model response
+        {TARGET_TEXT}      - replaced with the reference summary (ground truth)
+
+    After substitution, a response-format footer is appended so that
+    parse_llm_response() can extract Score + Explanation.
+
+    Args:
+        criteria: User-written prompt template with {PROMPT}, {PREDICTED_TEXT}, {TARGET_TEXT} placeholders
+        source: Original source document text (substituted for {PROMPT})
+        summary: Generated summary to evaluate (substituted for {PREDICTED_TEXT})
+        reference_summary: Optional reference summary (substituted for {TARGET_TEXT})
+
+    Returns:
+        str: Fully resolved prompt ready for LLM consumption
+    """
+    prompt = criteria
+    prompt = prompt.replace("{PROMPT}", source or "")
+    prompt = prompt.replace("{PREDICTED_TEXT}", summary or "")
+    prompt = prompt.replace("{TARGET_TEXT}", reference_summary or "(no reference provided)")
+
+    # Append structured output instructions so parse_llm_response() works
+    prompt += """
+
+**Response Format** (you MUST end your response with these two lines):
+Score: [1-10]
+Explanation: [Your reasoning]
+"""
+    return prompt
+
+
+def evaluate_custom(
+    summary: str,
+    source: str,
+    criteria: str,
+    reference_summary: str = None,
+    model_name: str = 'meta-llama/Llama-3.3-70B-Instruct',
+    timeout: int = 60
+) -> Dict[str, Any]:
+    """
+    Evaluate a summary using user-defined criteria via LLM-as-a-judge.
+
+    The user provides plain-English criteria and the LLM scores the summary
+    1-10 with an explanation. Uses the same query_llm + parse_llm_response
+    pipeline as the built-in G-Eval metrics.
+
+    Args:
+        summary: Generated summary text to evaluate
+        source: Source document text
+        criteria: User-written evaluation criteria
+        reference_summary: Optional reference summary for comparison
+        model_name: H2OGPTE LLM model. Default "meta-llama/Llama-3.3-70B-Instruct"
+        timeout: API timeout in seconds. Default 60
+
+    Returns:
+        Dict[str, Any]: Result dictionary with keys:
+            - score (float): Normalized score from 0.0 to 1.0
+            - raw_score (float): Original 1-10 scale score
+            - explanation (str): LLM's reasoning
+            - full_response (str): Complete LLM response
+            - error (str, optional): Error message if call failed
+    """
+    try:
+        if not criteria or not criteria.strip():
+            return {
+                'score': None,
+                'error': 'Custom evaluation criteria are required'
+            }
+
+        prompt = create_custom_judge_prompt(criteria, source, summary, reference_summary)
+        response = query_llm(prompt, model_name, timeout)
+        score, explanation = parse_llm_response(response)
+
+        if score is not None:
+            normalized_score = score / 10.0
+            return {
+                'score': normalized_score,
+                'raw_score': score,
+                'explanation': explanation or 'No explanation provided',
+                'full_response': response,
+                'error': None
+            }
+        else:
+            return {
+                'score': None,
+                'error': 'Failed to parse score from LLM response',
+                'full_response': response,
+            }
+    except Exception as e:
+        return {
+            'score': None,
+            'error': str(e),
+        }
+
+
 def evaluate_all(
     summary: str,
     source: str = None,

@@ -4,6 +4,31 @@ All notable changes to this project are documented here.
 
 ---
 
+## [3.1.0] - 2026-02-10
+
+### LLM-as-a-Judge: Custom Prompt Template Evaluation
+
+Added an optional **LLM-as-a-Judge** section that lets users define their own evaluation criteria using a prompt template with placeholder substitution.
+
+### Added
+- **`evaluate_custom()`** in `era3_llm_judge.py` — backend function that substitutes `{PROMPT}`, `{PREDICTED_TEXT}`, `{TARGET_TEXT}` placeholders and queries the LLM for a 1-10 score with explanation
+- **`create_custom_judge_prompt()`** — builds the final prompt from user template via placeholder replacement
+- **LLM-as-a-Judge UI section** in `display_results()` — appears after built-in metrics, before batch evaluation
+  - Editable prompt template text area (pre-filled with a general-purpose judge template)
+  - Placeholder instructions (`{PROMPT}`, `{PREDICTED_TEXT}`, `{TARGET_TEXT}`)
+  - "Run LLM-as-a-Judge" button with spinner below
+  - Score display (color-coded 1-10), explanation, and assessment tier (Good/Mixed/Poor)
+- **Batch integration** — `batch_evaluate_dataset()` accepts `custom_criteria` parameter; when set, adds `custom_judge_score` and `custom_judge_explanation` columns per row
+- **Agent registry** — `evaluate_custom_judge()` wrapper and `custom_judge` entry in `METRIC_REGISTRY` (`tool_logic.py`)
+- **Session state** — `custom_judge_criteria`, `custom_judge_result`, `custom_judge_running`
+
+### Changed
+- **"Evaluate Summary" button** — added 📊 emoji
+- **Import block** in `ui/app.py` — added `evaluate_custom` to `era3_llm_judge` imports
+- **Documentation** — updated README, METRICS.md, GETTING_STARTED.md, and CHANGELOG.md
+
+---
+
 ## [3.0.0] - 2026-02-07
 
 ### GitHub-Ready Release

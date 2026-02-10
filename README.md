@@ -2,12 +2,14 @@
 
 **Comprehensive Summarization Evaluation Framework**
 
-24 metrics across 5 evaluation dimensions.
+24 built-in metrics across 5 evaluation dimensions, plus a customizable **LLM-as-a-Judge** for your own criteria.
+
 1. **Faithfulness:** Does the summary stick to the source without hallucinating?
 2. **Completeness:** How much of the essential source meaning was captured?
 3. **Semantic Alignment:** How well does the summary match the reference summary?
 4. **Surface Overlap:** How many specific words/phrases match the reference?
 5. **Linguistic Quality:** Is the output readable, logical and well structured?
+6. **LLM-as-a-Judge:** Custom prompt template — define your own evaluation criteria and have the LLM score 1-10 with explanation.
 
 ---
 
@@ -152,6 +154,15 @@ Is the output readable, logical and well structured?
 | DAG | API | Decision tree: accuracy, completeness, clarity |
 | Prometheus | API | Open-source LLM judge |
 
+### 6. LLM-as-a-Judge (Custom)
+Define your own evaluation criteria using a prompt template.
+
+| Feature | Description |
+|---------|-------------|
+| Custom Prompt Template | Editable prompt with `{PROMPT}`, `{PREDICTED_TEXT}`, `{TARGET_TEXT}` placeholders |
+| Scoring | LLM scores 1-10 with explanation |
+| Batch Support | Automatically included in batch evaluation when criteria are set |
+
 ---
 
 ## Model Storage
@@ -190,7 +201,7 @@ H2O SumBench/
 │   │   ├── era1_word_overlap.py    # ROUGE, BLEU, METEOR, etc.
 │   │   ├── era2_embeddings.py      # BERTScore, MoverScore
 │   │   ├── era3_logic_checkers.py  # NLI, FactCC, AlignScore, Entity Coverage
-│   │   ├── era3_llm_judge.py       # G-Eval, DAG, Prometheus
+│   │   ├── era3_llm_judge.py       # G-Eval, DAG, Prometheus, Custom Judge
 │   │   └── completeness_metrics.py # Semantic Coverage, BERTScore Recall
 │   └── utils/
 │       ├── force_cpu.py            # Force CPU-only PyTorch mode
@@ -234,13 +245,14 @@ H2O SumBench/
 ## Documentation
 
 - **[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)** - First-time setup walkthrough
-- **[docs/METRICS.md](docs/METRICS.md)** - Complete guide to all 24 metrics
+- **[docs/METRICS.md](docs/METRICS.md)** - Complete guide to all 24 metrics + custom judge
 - **[docs/SETUP.md](docs/SETUP.md)** - Installation troubleshooting
 
 ---
 
 ## Version
 
+- **v3.1** - LLM-as-a-Judge: custom prompt template evaluation with batch support
 - **v3.0** - GitHub-ready release, setup script, documentation refresh
 - **v2.4** - New prompt architecture, enhanced documentation
 - **v2.3** - MCP warmup, system installation and dynamic Jinja2 prompt

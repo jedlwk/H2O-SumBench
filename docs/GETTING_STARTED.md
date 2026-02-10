@@ -15,6 +15,7 @@ H2O.ai SumBench is a **text summarization evaluation tool** with **24 metrics** 
 - **Semantic Alignment** (3 metrics) - Does the meaning match a reference summary?
 - **Surface Overlap** (7 metrics) - How many words/phrases match the reference?
 - **Linguistic Quality** (5 metrics) - Is it readable, logical and well structured?
+- **LLM-as-a-Judge** (custom) - Define your own evaluation criteria via prompt template
 
 **Use case**: Evaluate how good a summary is compared to the original text.
 
@@ -107,11 +108,15 @@ If it doesn't, manually visit: `http://localhost:8501`
    - **Source Document**: Paste the original long text
    - **Summary**: Paste the summary to evaluate
 
-2. **Click "Evaluate Summary"**
+2. **Click "📊 Evaluate Summary"**
    - All available metrics run automatically
    - Faithfulness + Completeness + Semantic + Lexical always run (local, free)
    - Linguistic Quality local metrics always run
    - API metrics run if API key is configured
+
+5. **Optional: LLM-as-a-Judge** (scroll past results)
+   - Edit the prompt template or use the default
+   - Click "⚖️ Run LLM-as-a-Judge" for a custom 1-10 score
 
 3. **Wait**:
    - Local only: ~30 seconds

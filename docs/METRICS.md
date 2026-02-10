@@ -37,6 +37,8 @@ All local models are under 2GB each. API metrics use H2OGPTE.
 | 21 | G-Eval Coherence | API | - | Does it flow logically? (1-10) |
 | 22 | DAG | API | - | 3-step decision tree (0-6) |
 | 23 | Prometheus | API | - | Open-source LLM judge (1-5) |
+| **6. LLM-as-a-Judge** |||||
+| 24 | Custom Judge | API | - | User-defined prompt template (1-10) |
 
 **Total Local Storage:** ~6-8GB (models downloaded on first use)
 
@@ -406,6 +408,35 @@ Total: 0-6 points
 - 1: Very Poor
 
 **Paper:** "Prometheus: Inducing Fine-Grained Evaluation Capability in Language Models" (2023)
+
+---
+
+## 6. LLM-as-a-Judge (Custom)
+
+**Question:** Does the summary meet your own domain-specific criteria?
+
+This feature lets you write a custom prompt template and have the LLM score the summary on a 1-10 scale.
+
+---
+
+### Custom Judge
+**Model:** API-based (uses the selected LLM model)
+
+**What it does:** Substitutes your text into a prompt template and asks the LLM to score 1-10 with an explanation.
+
+**Placeholders:**
+- `{PROMPT}` — replaced with the source document
+- `{PREDICTED_TEXT}` — replaced with the generated summary
+- `{TARGET_TEXT}` — replaced with the reference summary (if provided)
+
+**Default template:** A general-purpose judge prompt evaluating helpfulness, relevance, accuracy, depth, and creativity. You can edit or replace it entirely.
+
+**Batch support:** When criteria are set, batch evaluation automatically adds `custom_judge_score` and `custom_judge_explanation` columns.
+
+**Scores (1-10):**
+- 8-10: Strong performance on your criteria
+- 5-7: Mixed results — review explanation
+- 1-4: Significant gaps identified
 
 ---
 

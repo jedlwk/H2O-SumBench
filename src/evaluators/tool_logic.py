@@ -73,7 +73,8 @@ from .era3_llm_judge import (
     evaluate_fluency as _evaluate_fluency,
     evaluate_dag as _evaluate_dag,
     evaluate_prometheus as _evaluate_prometheus,
-    evaluate_all as _evaluate_all_llm
+    evaluate_all as _evaluate_all_llm,
+    evaluate_custom as _evaluate_custom
 )
 from .completeness_metrics import (
     compute_semantic_coverage,
@@ -1151,6 +1152,56 @@ def evaluate_all_llm_judge(
     }
 
 
+def evaluate_custom_judge(
+    summary: str,
+    source: str,
+    reference_summary: Optional[str] = None,
+    criteria: str = "",
+    model_name: str = 'meta-llama/Llama-3.3-70B-Instruct',
+    timeout: int = 60
+) -> Dict[str, Any]:
+    """
+    Evaluate a summary using user-defined criteria via LLM-as-a-judge.
+
+    The user provides plain-English evaluation criteria and the LLM scores
+    the summary on a 1-10 scale with an explanation. Useful for domain-specific
+    checks (financial coverage, risk identification, readability, etc.).
+
+    Args:
+        summary: The generated summary text to evaluate. Required.
+        source: The source document to evaluate against. Required.
+        reference_summary: Optional reference summary for comparison.
+        criteria: User-written evaluation criteria in plain English. Required.
+        model_name: H2OGPTE LLM model name. Default "meta-llama/Llama-3.3-70B-Instruct".
+        timeout: API timeout in seconds. Default 60.
+
+    Returns:
+        Dictionary containing:
+        - metric_name: "Custom_Judge"
+        - scores: Dict with score (0-1), raw_score (1-10)
+        - interpretation: LLM's reasoning based on custom criteria
+        - error: Error message if evaluation failed, None otherwise
+    """
+    result = _evaluate_custom(
+        summary=summary,
+        source=source,
+        criteria=criteria,
+        reference_summary=reference_summary,
+        model_name=model_name,
+        timeout=timeout
+    )
+
+    return {
+        'metric_name': 'Custom_Judge',
+        'scores': {
+            'score': result.get('score'),
+            'raw_score': result.get('raw_score')
+        },
+        'interpretation': result.get('explanation', 'Unable to compute'),
+        'error': result.get('error')
+    }
+
+
 # =============================================================================
 # COMPLETENESS METRICS
 # =============================================================================
@@ -1523,6 +1574,14 @@ METRIC_REGISTRY: Dict[str, Dict[str, Any]] = {
         'requires_reference': False,
         'requires_either': False,
         'description': 'All LLM judge metrics combined'
+    },
+    'custom_judge': {
+        'function': evaluate_custom_judge,
+        'category': 'llm_judge',
+        'requires_source': True,
+        'requires_reference': False,
+        'requires_either': False,
+        'description': 'User-defined custom criteria LLM evaluation'
     },
 
     # Completeness

@@ -33,7 +33,8 @@ try:
         evaluate_fluency,
         evaluate_dag,
         evaluate_prometheus,
-        evaluate_all
+        evaluate_all,
+        evaluate_custom
     )
     from dotenv import load_dotenv
     load_dotenv()
@@ -275,6 +276,12 @@ def initialize_session_state():
         st.session_state.start_batch_eval = False
     if 'toast_message' not in st.session_state:
         st.session_state.toast_message = None
+    if 'custom_judge_criteria' not in st.session_state:
+        st.session_state.custom_judge_criteria = ""
+    if 'custom_judge_result' not in st.session_state:
+        st.session_state.custom_judge_result = None
+    if 'custom_judge_running' not in st.session_state:
+        st.session_state.custom_judge_running = False
 
 
 def parse_dataset_file(uploaded_file):
@@ -1599,6 +1606,103 @@ def display_results(results: Dict[str, Dict[str, Any]]):
         st.markdown('<div class="gold-divider"></div>', unsafe_allow_html=True)
         st.info("**Stage 2 (Conformance)** skipped -- no reference summary provided. Add a reference summary to enable ROUGE, BLEU, BERTScore comparisons.")
 
+    # ── LLM-as-a-Judge (optional) ────────────────────────────────────────
+    if H2OGPTE_AVAILABLE:
+        st.markdown('<div class="gold-divider"></div>', unsafe_allow_html=True)
+        st.subheader("LLM-as-a-Judge")
+        st.caption(
+            "Customize the prompt template for LLM-as-a-Judge evaluation. "
+            "Available placeholders: **{PROMPT}** for the input question, "
+            "**{PREDICTED_TEXT}** for the model's response, and "
+            "**{TARGET_TEXT}** for reference answers (ground truth). "
+            'Make sure to specify the scoring scale and criteria in the prompt template '
+            '(e.g. "Score the response on a scale of 1 to 10").'
+        )
+
+        @st.fragment
+        def _custom_judge_fragment():
+            DEFAULT_JUDGE_TEMPLATE = """\
+[Instruction]
+Please act as an impartial judge and evaluate the quality of the response provided by an AI assistant to the user question displayed below. Your evaluation should consider factors such as the helpfulness, relevance, accuracy, depth, creativity, and level of detail of the response. Begin your evaluation by providing a short explanation. Be as objective as possible. After providing your explanation, you must rate the response on a scale of 1 (worst) to 10 (best). You will be provided with a reference answer to compare the response to.
+
+[Question]
+{PROMPT}
+
+[The Start of Reference Answer to Compare to]
+{TARGET_TEXT}
+[The End of Reference Answer to Compare to]
+
+[The Start of Assistant's Answer to Evaluate]
+{PREDICTED_TEXT}
+[The End of Assistant's Answer to Evaluate]"""
+
+            criteria_text = st.text_area(
+                "LLM-as-a-Judge Prompt Template",
+                value=DEFAULT_JUDGE_TEMPLATE,
+                height=300,
+                key="custom_judge_criteria_input"
+            )
+            st.session_state.custom_judge_criteria = criteria_text
+
+            # Run button
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                run_judge = st.button(
+                    "⚖️ Run LLM-as-a-Judge",
+                    type="secondary",
+                    use_container_width=True,
+                    disabled=not criteria_text.strip(),
+                    key="run_custom_judge"
+                )
+
+            if run_judge:
+                with st.spinner("Running LLM-as-a-Judge..."):
+                    source_text = st.session_state.get('source_text', '')
+                    summary_text = st.session_state.get('summary_text', '')
+                    reference_text = st.session_state.get('reference_text', '')
+
+                    result = evaluate_custom(
+                        summary=summary_text,
+                        source=source_text,
+                        criteria=criteria_text,
+                        reference_summary=reference_text,
+                        model_name=st.session_state.selected_model,
+                        timeout=90
+                    )
+                    st.session_state.custom_judge_result = result
+
+            # Display results
+            cj_result = st.session_state.custom_judge_result
+            if cj_result is not None:
+                if cj_result.get('error') and cj_result.get('score') is None:
+                    st.error(f"Custom Judge error: {cj_result['error']}")
+                else:
+                    raw = cj_result.get('raw_score', 0)
+                    explanation = cj_result.get('explanation', 'No explanation provided')
+
+                    res_col1, res_col2 = st.columns([1, 3])
+                    with res_col1:
+                        score_html = format_score_display(raw, metric_type="geval", max_score=10.0)
+                        st.markdown(f"**Score:** {score_html}", unsafe_allow_html=True)
+                    with res_col2:
+                        st.markdown(f"**Explanation:** {explanation}")
+
+                    if raw >= 7:
+                        st.success(f"**Good** — The summary scores {int(raw)}/10 on your custom criteria.")
+                    elif raw >= 4:
+                        st.warning(f"**Mixed** — The summary scores {int(raw)}/10 on your custom criteria. Review the explanation for areas to improve.")
+                    else:
+                        st.error(f"**Poor** — The summary scores {int(raw)}/10 on your custom criteria. Significant gaps identified.")
+
+                    st.markdown("""
+                    <div class="caveat-box">
+                    <strong>Note:</strong> Custom judge scores depend on the selected LLM model and prompt phrasing.
+                    Different models or slightly different criteria may produce different scores. Use as a directional signal alongside built-in metrics.
+                    </div>
+                    """, unsafe_allow_html=True)
+
+        _custom_judge_fragment()
+
     # Batch evaluation button (show at end of results if dataset uploaded)
     if st.session_state.uploaded_dataset is not None and \
        st.session_state.source_column and st.session_state.summary_column and \
@@ -1621,7 +1725,7 @@ def display_results(results: Dict[str, Dict[str, Any]]):
             )
 
 
-def batch_evaluate_dataset(df: pd.DataFrame, source_col: str, reference_col: str, summary_col: str, model_name: str, progress_bar, status_text, preview_placeholder=None):
+def batch_evaluate_dataset(df: pd.DataFrame, source_col: str, reference_col: str, summary_col: str, model_name: str, progress_bar, status_text, preview_placeholder=None, custom_criteria: str = ""):
     """
     Evaluate entire dataset with API metrics only (no token limits).
 
@@ -1647,6 +1751,12 @@ def batch_evaluate_dataset(df: pd.DataFrame, source_col: str, reference_col: str
     results_df['geval_fluency'] = None
     results_df['dag_score'] = None
     results_df['prometheus_score'] = None
+
+    # Custom judge columns (only if criteria provided)
+    has_custom = bool(custom_criteria and custom_criteria.strip())
+    if has_custom:
+        results_df['custom_judge_score'] = None
+        results_df['custom_judge_explanation'] = None
 
     total_rows = len(df)
 
@@ -1708,6 +1818,17 @@ def batch_evaluate_dataset(df: pd.DataFrame, source_col: str, reference_col: str
             )
             results_df.at[idx, 'prometheus_score'] = prometheus_result.get('score', None)
 
+            # Custom Judge (only if criteria provided)
+            if has_custom:
+                custom_result = evaluate_custom(
+                    summary=summary_text,
+                    source=source_text,
+                    criteria=custom_criteria,
+                    reference_summary=reference_text if reference_text else None,
+                    model_name=model_name
+                )
+                results_df.at[idx, 'custom_judge_score'] = custom_result.get('raw_score', None)
+                results_df.at[idx, 'custom_judge_explanation'] = custom_result.get('explanation', None)
 
         except Exception as e:
             st.error(f"Error processing row {row_num}: {str(e)}")
@@ -1718,6 +1839,9 @@ def batch_evaluate_dataset(df: pd.DataFrame, source_col: str, reference_col: str
             results_df.at[idx, 'geval_fluency'] = None
             results_df.at[idx, 'dag_score'] = None
             results_df.at[idx, 'prometheus_score'] = None
+            if has_custom:
+                results_df.at[idx, 'custom_judge_score'] = None
+                results_df.at[idx, 'custom_judge_explanation'] = None
 
         # Update live preview for first 10 rows
         if preview_placeholder is not None and row_num <= 10:
@@ -1816,7 +1940,7 @@ def main():
             preview_placeholder = st.empty()
 
             # Run batch evaluation with live preview
-            results_df = batch_evaluate_dataset(df, source_col, reference_col, summary_col, model_name, progress_bar, status_text, preview_placeholder)
+            results_df = batch_evaluate_dataset(df, source_col, reference_col, summary_col, model_name, progress_bar, status_text, preview_placeholder, custom_criteria=st.session_state.custom_judge_criteria)
 
             # Store results
             st.session_state.batch_results = results_df
@@ -2308,7 +2432,7 @@ def main():
 
     with col2:
         evaluate_button = st.button(
-            "Evaluate Summary",
+            "📊 Evaluate Summary",
             type="secondary",
             use_container_width=True
         )
