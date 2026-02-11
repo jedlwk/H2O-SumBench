@@ -275,9 +275,9 @@ def evaluate_summary(summary: str, source: str = None, reference: str = None):
     What to pass:
         summary   (REQUIRED) — The generated summary you want to evaluate.
                     Pass the FULL summary text, not a filename or URL.
-        source    (optional) — The original source document that was summarized.
+        source    (REQUIRED) — The original source document that was summarized.
                     Enables faithfulness and completeness checks.
-        reference (optional) — A human-written or gold-standard reference summary.
+        reference (Optional) — A human-written or gold-standard reference summary.
                     Enables word-overlap and semantic similarity metrics.
 
     Provide as many inputs as you have. More inputs = more metrics:

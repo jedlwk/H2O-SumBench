@@ -15,7 +15,7 @@ pip install -r requirements.txt
 **First install takes**: ~5-10 minutes
 **Disk space needed**: ~3GB
 
-### 2. (Optional) Configure API Access
+### 2. Configure API Access
 
 For API metrics (G-Eval, DAG, Prometheus), create `.env` file:
 

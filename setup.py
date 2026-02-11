@@ -162,7 +162,7 @@ def main():
     print(f"  1. Activate the virtual environment:")
     print(f"       {activate}")
     print()
-    print("  2. (Optional) Copy .env.example to .env and add your H2OGPTE API key")
+    print("  2. Go to .env.example, add your H2OGPTE API key, and rename the file to .env")
     print()
     print("  3. Launch the app:")
     print("       streamlit run ui/app.py")

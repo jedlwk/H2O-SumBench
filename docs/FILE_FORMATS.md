@@ -220,7 +220,7 @@ Your file has columns: ["article_id", "full_text", "generated_summary", "human_s
 Select:
 - Source Text Column: "full_text"
 - Summary Column: "generated_summary"
-- Reference Summary Column: "human_summary" (optional)
+- Reference Summary Column: "human_summary" (Optional)
 ```
 
 The other columns (`article_id`, `author`) will be ignored.
