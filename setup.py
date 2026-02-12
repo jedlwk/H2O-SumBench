@@ -16,7 +16,7 @@ import subprocess
 import sys
 import venv
 
-MIN_PYTHON = (3, 9)
+MIN_PYTHON = (3, 10)
 VENV_DIR = ".venv"
 
 
@@ -27,6 +27,10 @@ def check_python_version():
             f"ERROR: Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]}+ is required "
             f"(you have {platform.python_version()})."
         )
+    if platform.system() == "Windows":
+        print("  Note: Windows requires the Microsoft Visual C++ Redistributable.")
+        print("  If you hit DLL errors, install it from:")
+        print("  https://aka.ms/vs/17/release/vc_redist.x64.exe")
 
 
 def venv_python():

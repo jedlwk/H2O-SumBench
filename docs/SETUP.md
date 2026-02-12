@@ -41,7 +41,7 @@ App opens at: `http://localhost:8501`
 
 ### Prerequisites
 
-**Python Version**: 3.9 or higher
+**Python Version**: 3.10 or higher
 - Check: `python3 --version`
 - If needed: Install from [python.org](https://www.python.org/downloads/)
 
@@ -235,6 +235,14 @@ python3 tests/test_h2ogpte_api.py
 ```bash
 python3 tests/test_corrected_models.py
 ```
+
+### Issue: DLL initialization failed (`c10.dll`) on Windows
+
+**Problem**: PyTorch requires the Microsoft Visual C++ Redistributable
+
+**Solution**: Install the [Visual C++ Redistributable (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe), then restart your terminal and re-run `python setup.py`.
+
+---
 
 ### Issue: `pyemd` fails to install on Windows
 
