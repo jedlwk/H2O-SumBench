@@ -937,9 +937,9 @@ def create_custom_judge_prompt(
     # Append structured output instructions so parse_llm_response() works
     prompt += """
 
-**Response Format** (you MUST end your response with these two lines):
+**Response Format** (you MUST end your response with exactly these two lines):
 Score: [1-10]
-Explanation: [Your reasoning]
+Explanation: [Be specific — cite missing facts, unsupported claims, or quality issues by name]
 """
     return prompt
 

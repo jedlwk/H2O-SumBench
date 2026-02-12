@@ -1623,18 +1623,24 @@ def display_results(results: Dict[str, Dict[str, Any]]):
         def _custom_judge_fragment():
             DEFAULT_JUDGE_TEMPLATE = """\
 [Instruction]
-Please act as an impartial judge and evaluate the quality of the response provided by an AI assistant to the user question displayed below. Your evaluation should consider factors such as the helpfulness, relevance, accuracy, depth, creativity, and level of detail of the response. Begin your evaluation by providing a short explanation. Be as objective as possible. After providing your explanation, you must rate the response on a scale of 1 (worst) to 10 (best). You will be provided with a reference answer to compare the response to.
+You are an impartial judge evaluating a summary against its source document and (optionally) a reference summary. Rate the summary on a scale of 1 (worst) to 10 (best).
 
-[Question]
+Evaluate these specific dimensions:
+1. **Faithfulness** — Are all claims in the summary supported by the source? Flag any hallucinated or unsupported facts.
+2. **Completeness** — Does the summary capture the key points? List any important information from the source that is missing.
+3. **Conciseness** — Is the summary free of redundancy and filler? Note any unnecessary repetition.
+4. **Clarity** — Is the summary well-structured and easy to understand?
+
+In your explanation, be specific: name the exact facts, sentences, or topics that are missing, hallucinated, or poorly expressed. Do not use vague language like "lacks some context."
+
+[Source Document]
 {PROMPT}
 
-[The Start of Reference Answer to Compare to]
+[Reference Summary (for comparison)]
 {TARGET_TEXT}
-[The End of Reference Answer to Compare to]
 
-[The Start of Assistant's Answer to Evaluate]
-{PREDICTED_TEXT}
-[The End of Assistant's Answer to Evaluate]"""
+[Summary to Evaluate]
+{PREDICTED_TEXT}"""
 
             criteria_text = st.text_area(
                 "LLM-as-a-Judge Prompt Template",
