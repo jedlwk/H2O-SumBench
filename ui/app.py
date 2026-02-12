@@ -1623,20 +1623,14 @@ def display_results(results: Dict[str, Dict[str, Any]]):
         def _custom_judge_fragment():
             DEFAULT_JUDGE_TEMPLATE = """\
 [Instruction]
-You are an impartial judge evaluating a summary against its source document and (optionally) a reference summary. Rate the summary on a scale of 1 (worst) to 10 (best).
+Evaluate the summary against the source document (and reference if provided) on a scale of 1 (worst) to 10 (best). Consider faithfulness, completeness, and clarity.
 
-Evaluate these specific dimensions:
-1. **Faithfulness** — Are all claims in the summary supported by the source? Flag any hallucinated or unsupported facts.
-2. **Completeness** — Does the summary capture the key points? List any important information from the source that is missing.
-3. **Conciseness** — Is the summary free of redundancy and filler? Note any unnecessary repetition.
-4. **Clarity** — Is the summary well-structured and easy to understand?
-
-In your explanation, be specific: name the exact facts, sentences, or topics that are missing, hallucinated, or poorly expressed. Do not use vague language like "lacks some context."
+Be specific in your explanation: cite any missing key points, unsupported claims, or errors by name. Avoid vague statements.
 
 [Source Document]
 {PROMPT}
 
-[Reference Summary (for comparison)]
+[Reference Summary]
 {TARGET_TEXT}
 
 [Summary to Evaluate]
