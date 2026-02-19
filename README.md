@@ -31,8 +31,9 @@ Comprehensive summarization evaluation framework — **23 built-in metrics** acr
 |-------------|---------|-------|
 | **Python** | 3.10+ | Tested on 3.10, 3.11, 3.13 |
 | **pip** | 20+ | Comes with Python |
-| **H2OGPTE** | Optional | Required only for LLM-judged metrics (G-Eval, DAG, Prometheus) and agent modes |
+| **H2OGPTE** | 1.6.47+	 | Required for LLM-judged metrics (G-Eval, DAG, Prometheus) and Agent Modes |
 
+> **Why Python 3.10 specifically?** Key packages (pandas, numpy, uvicorn) don't ship pre-built Windows wheels for 3.9. On 3.10+, everything installs cleanly on both macOS and Windows — no C compiler needed.
 ---
 
 ## Quick Start (Local)
