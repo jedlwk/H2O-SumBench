@@ -16,16 +16,17 @@ import subprocess
 import sys
 import venv
 
-MIN_PYTHON = (3, 10)
+REQUIRED_PYTHON = (3, 10)
 VENV_DIR = ".venv"
 
 
 def check_python_version():
-    """Exit early if the Python version is too old."""
-    if sys.version_info < MIN_PYTHON:
+    """Exit early if the Python version is not 3.10.x."""
+    if sys.version_info[:2] != REQUIRED_PYTHON:
         sys.exit(
-            f"ERROR: Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]}+ is required "
-            f"(you have {platform.python_version()})."
+            f"ERROR: Python {REQUIRED_PYTHON[0]}.{REQUIRED_PYTHON[1]} is required "
+            f"(you have {platform.python_version()}).\n"
+            f"  Install Python 3.10 from https://www.python.org/downloads/"
         )
     if platform.system() == "Windows":
         print("  Note: Windows requires the Microsoft Visual C++ Redistributable.")
@@ -49,16 +50,12 @@ def pip_works(py):
 
 
 def create_venv():
-    """Create a virtual environment if it doesn't already exist."""
+    """Delete any existing venv and create a fresh one."""
     py = venv_python()
 
-    # If venv exists, check it actually works
-    if os.path.isfile(py):
-        if pip_works(py):
-            print(f"\n  Virtual environment already exists at {VENV_DIR}/")
-            return
-        # Broken venv — nuke and recreate
-        print(f"\n  Existing {VENV_DIR}/ is broken (pip not functional). Recreating ...")
+    # Always start clean
+    if os.path.exists(VENV_DIR):
+        print(f"\n  Removing existing {VENV_DIR}/ ...")
         shutil.rmtree(VENV_DIR)
 
     print(f"\n  Creating virtual environment in {VENV_DIR}/ ...")

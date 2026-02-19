@@ -2,7 +2,7 @@
 
 Comprehensive summarization evaluation framework — **23 built-in metrics** across two evaluation stages, plus a customizable **LLM-as-a-Judge** for your own criteria.
 
-![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.10-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)
 ![AI](https://img.shields.io/badge/AI-H2OGPTE-FEC925?style=flat-square)
 ![PyTorch](https://img.shields.io/badge/Framework-PyTorch-EE4C2C?style=flat-square&logo=pytorch&logoColor=white)
@@ -29,7 +29,7 @@ Comprehensive summarization evaluation framework — **23 built-in metrics** acr
 
 | Requirement | Version | Notes |
 |-------------|---------|-------|
-| **Python** | 3.10+ | Tested on 3.10, 3.11, 3.13 |
+| **Python** | 3.10 | Must be 3.10.x — setup enforces exact version |
 | **pip** | 20+ | Comes with Python |
 | **H2OGPTE** | 1.6.47+	 | Required for LLM-judged metrics (G-Eval, DAG, Prometheus) and Agent Modes |
 
