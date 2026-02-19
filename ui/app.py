@@ -1,5 +1,5 @@
 """
-H2O.ai SumBench: Text Summarization Evaluation Tool
+H2O SumBench: Text Summarization Evaluation Tool
 A comprehensive evaluation framework for assessing text summarization quality.
 """
 
@@ -49,7 +49,7 @@ LOGO_PATH = os.path.join(os.path.dirname(__file__), '..', 'logo.png')
 
 # Page configuration
 st.set_page_config(
-    page_title="H2O.ai SumBench | H2O.ai",
+    page_title="H2O SumBench | H2O.ai",
     page_icon=LOGO_PATH if os.path.exists(LOGO_PATH) else "📊",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -1901,7 +1901,7 @@ def main():
     # Handle batch evaluation - MUST be at top before any other UI renders
     if st.session_state.batch_evaluation_running:
         try:
-            st.title("📊 H2O.ai SumBench - Batch Evaluation")
+            st.title("📊 H2O SumBench - Batch Evaluation")
             st.markdown("---")
             st.header("📊 Batch Evaluation in Progress")
 
@@ -1967,7 +1967,7 @@ def main():
     # Branded Header
     st.markdown(f"""
     <div class="branded-header">
-    <h1 style="margin-bottom:0;">H2O.ai SumBench</h1>
+    <h1 style="margin-bottom:0;">H2O SumBench</h1>
     <p style="color:#888; margin-top:4px; margin-bottom:0;">
     Summarization Evaluation Framework by <span class="h2o-gold">H2O.ai</span>
     </p>
@@ -1983,7 +1983,7 @@ def main():
     st.markdown("")
     st.markdown("#### How It Works")
     st.markdown("""
-    H2O.ai SumBench evaluates any text summary through a two-stage pipeline.
+    H2O SumBench evaluates any text summary through a two-stage pipeline.
     You provide a **source document** and a **generated summary**. The framework then runs multiple key metrics to give you a complete picture
     of how well your summary performs.
     """)
@@ -2583,7 +2583,7 @@ def main():
     st.markdown(
         """
         <div style='text-align: center; color: #888;'>
-        <p>H2O.ai SumBench v3.0 | Built with Streamlit |
+        <p>H2O SumBench v3.0 | Built with Streamlit |
         <a href='https://h2o.ai' style='color: #FEC925; font-weight: 600;'>H2O.ai</a></p>
         </div>
         """,

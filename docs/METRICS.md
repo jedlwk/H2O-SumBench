@@ -1,4 +1,4 @@
-# H2O.ai SumBench: Complete Metrics Guide
+# H2O SumBench: Complete Metrics Guide
 
 **23 metrics** across 2 evaluation stages, plus a customizable LLM-as-a-Judge.
 All local models are under 2GB each. API metrics use H2OGPTE.

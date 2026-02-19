@@ -3,7 +3,7 @@
 Full H2OGPTE Agent Test with All Evaluation Metrics.
 
 This test demonstrates using H2OGPTE agent with all summary evaluation metrics
-from H2O.ai SumBench. The agent decides which metrics to use based on:
+from H2O SumBench. The agent decides which metrics to use based on:
 1. What the user wants to evaluate (factuality, fluency, completeness, etc.)
 2. Whether a reference summary is available
 """
@@ -81,13 +81,13 @@ def setup_collection(client: H2OGPTE, agent_type: str) -> str:
     # Create collection based on agent type
     if agent_type == "agent":
         collection_id = client.create_collection(
-        name='H2O.ai SumBench Agent Only',
-        description='H2OGPTE Agent: Evaluate summaries using H2O.ai SumBench metrics through tool-calling.',
+        name='H2O SumBench Agent Only',
+        description='H2OGPTE Agent: Evaluate summaries using H2O SumBench metrics through tool-calling.',
     )
     else:  # agent_with_mcp
         collection_id = client.create_collection(
-        name='H2O.ai SumBench Agent with MCP',
-        description='H2OGPTE Agent: Evaluate summaries using H2O.ai SumBench metrics through local MCP server.',
+        name='H2O SumBench Agent with MCP',
+        description='H2OGPTE Agent: Evaluate summaries using H2O SumBench metrics through local MCP server.',
     )
     print(f"Collection created: {collection_id}")
 

@@ -1,5 +1,5 @@
 """
-H2O.ai SumBench - One-shot setup script.
+H2O SumBench - One-shot setup script.
 
 Creates a virtual environment, installs all Python dependencies,
 downloads the spaCy language model, and fetches required NLTK data.
@@ -111,7 +111,7 @@ def main():
     project_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(project_dir)
 
-    print("\nH2O.ai SumBench Setup")
+    print("\nH2O SumBench Setup")
     print(f"  Python  : {platform.python_version()}")
     print(f"  Platform: {platform.system()} {platform.machine()}")
 

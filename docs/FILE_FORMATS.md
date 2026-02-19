@@ -1,6 +1,6 @@
 # Dataset Upload Guide
 
-H2O.ai SumBench allows you to upload your own datasets for evaluation. This guide explains the supported formats and how to structure your data.
+H2O SumBench allows you to upload your own datasets for evaluation. This guide explains the supported formats and how to structure your data.
 
 ---
 
@@ -297,7 +297,7 @@ source,summary,reference_summary
 
 ## Generating Sample Data
 
-H2O.ai SumBench includes scripts to generate sample datasets from the CNN/DailyMail corpus:
+H2O SumBench includes scripts to generate sample datasets from the CNN/DailyMail corpus:
 
 **Step 1: Download CNN/DM articles**
 ```bash
@@ -364,7 +364,7 @@ python data/scripts/create_templates.py
 - `model_summary` (generated summary)
 - `human_summary` (reference summary)
 
-**Step 2:** Upload CSV to H2O.ai SumBench
+**Step 2:** Upload CSV to H2O SumBench
 - File appears in uploader
 - Dataset info shows: "10 rows × 3 columns"
 

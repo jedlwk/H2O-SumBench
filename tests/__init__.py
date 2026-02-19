@@ -1,1 +1,1 @@
-"""Test suite for H2O.ai SumBench."""
+"""Test suite for H2O SumBench."""

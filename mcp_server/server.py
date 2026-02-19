@@ -1,5 +1,5 @@
 """
-Build an MCP server for H2O.ai SumBench.
+Build an MCP server for H2O SumBench.
 """
 
 import os
@@ -48,7 +48,7 @@ except ImportError:
         get_metric_info,
     )
 
-mcp = FastMCP("H2O.ai SumBench MCP Server")
+mcp = FastMCP("H2O SumBench MCP Server")
 
 # ---------------------------------------------------------------------------
 # Metric catalog — single source of truth for every metric exposed via MCP.
@@ -266,7 +266,7 @@ def _build_summary(results: dict) -> dict:
 
 @mcp.tool()
 def evaluate_summary(summary: str, source: str = None, reference: str = None):
-    """Evaluate an LLM-generated summary using H2O.ai SumBench.
+    """Evaluate an LLM-generated summary using H2O SumBench.
 
     Call this tool ONCE with the full text of each input. The tool
     automatically selects and runs all appropriate metrics — you do

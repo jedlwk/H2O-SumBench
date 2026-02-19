@@ -1,6 +1,6 @@
 # Data Folder
 
-Contains datasets, templates, and processing scripts for H2O.ai SumBench.
+Contains datasets, templates, and processing scripts for H2O SumBench.
 
 ## Structure
 

@@ -1,4 +1,4 @@
-# H2O.ai SumBench - Changelog
+# H2O SumBench - Changelog
 
 All notable changes to this project are documented here.
 

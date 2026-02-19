@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Tests for the 17 supported evaluation metrics in H2O.ai SumBench.
+Tests for the 17 supported evaluation metrics in H2O SumBench.
 
 Covers:
   - Word Overlap (ROUGE, BLEU, METEOR, chrF++, Levenshtein)

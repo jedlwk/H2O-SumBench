@@ -1,4 +1,4 @@
-# H2O.ai SumBench v3.0 - Requirements
+# H2O SumBench v3.0 - Requirements
 # 24 metrics across 2 evaluation stages
 # All local models < 2GB each | Total storage ~6GB
 
