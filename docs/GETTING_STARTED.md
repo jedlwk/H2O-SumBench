@@ -34,7 +34,7 @@ H2O.ai SumBench is a **text summarization evaluation tool** with **23 metrics** 
 
 ```bash
 # Navigate to project directory
-cd H2O.ai SumBench
+cd "H2O.ai SumBench"
 
 # One-shot install (dependencies + spaCy model + NLTK data)
 python setup.py
@@ -70,18 +70,22 @@ For API metrics (G-Eval, DAG, Prometheus), you need an H2OGPTe API key.
 See [HOW_TO_GET_H2OGPTE_API.pdf](../HOW_TO_GET_H2OGPTE_API.pdf) for a step-by-step guide, then create `.env` file:
 
 ```bash
-# In project root directory
-cat > .env << 'EOF'
+# Copy the template and fill in your credentials
+cp .env.example .env
+nano .env   # or: notepad .env (Windows)
+```
+
+Set these values in `.env`:
+```
 H2OGPTE_API_KEY=your_api_key_here
 H2OGPTE_ADDRESS=https://your-instance.h2ogpte.com
-EOF
 ```
 
 Replace `your_api_key_here` and `your-instance.h2ogpte.com` with actual credentials.
 
 **Test API connection**:
 ```bash
-python3 tests/test_h2ogpte_api.py
+python tests/test_h2ogpte_api.py
 ```
 
 ---
@@ -193,10 +197,10 @@ Verify everything works:
 
 ```bash
 # Test all metrics (comprehensive)
-python3 -m pytest tests/test_all_metrics.py -v
+python -m pytest tests/test_all_metrics.py -v
 
 # Test API connection
-python3 tests/test_h2ogpte_api.py
+python tests/test_h2ogpte_api.py
 ```
 
 **Expected**: All tests show pass
@@ -284,7 +288,7 @@ pip install -r requirements.txt --force-reinstall
 
 ### "API connection failed"
 - Check `.env` file exists and has correct credentials
-- Test: `python3 tests/test_h2ogpte_api.py`
+- Test: `python tests/test_h2ogpte_api.py`
 
 ### App won't start
 ```bash
@@ -309,7 +313,7 @@ streamlit run ui/app.py --server.port 8502
 ### Run Tests
 ```bash
 # Verify everything works
-python3 -m pytest tests/test_all_metrics.py -v
+python -m pytest tests/test_all_metrics.py -v
 ```
 
 ### Customize
@@ -325,8 +329,8 @@ python3 -m pytest tests/test_all_metrics.py -v
 |------|---------|
 | Install | `python setup.py` |
 | Run app | `streamlit run ui/app.py` |
-| Test all | `python3 -m pytest tests/test_all_metrics.py -v` |
-| Test API | `python3 tests/test_h2ogpte_api.py` |
+| Test all | `python -m pytest tests/test_all_metrics.py -v` |
+| Test API | `python tests/test_h2ogpte_api.py` |
 | View docs | Open `docs/METRICS.md` in browser |
 
 | Stage | Count | Type | Time | Best For |

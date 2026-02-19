@@ -20,11 +20,15 @@ pip install -r requirements.txt
 For API metrics (G-Eval, DAG, Prometheus), create `.env` file:
 
 ```bash
-# Create .env in project root
-cat > .env << 'EOF'
+# Copy the template and edit with your credentials
+cp .env.example .env
+nano .env   # or: notepad .env (Windows)
+```
+
+Set these values in `.env`:
+```
 H2OGPTE_API_KEY=your_api_key_here
 H2OGPTE_ADDRESS=https://your-instance.h2ogpte.com
-EOF
 ```
 
 ### 3. Launch Application
@@ -42,12 +46,14 @@ App opens at: `http://localhost:8501`
 ### Prerequisites
 
 **Python Version**: 3.10 or higher
-- Check: `python3 --version`
+- Check: `python --version` (or `python3 --version` on macOS/Linux)
 - If needed: Install from [python.org](https://www.python.org/downloads/)
 
 **Pip Version**: 20.0 or higher
-- Check: `pip3 --version`
-- Upgrade: `pip3 install --upgrade pip`
+- Check: `pip --version` (or `pip3 --version` on macOS/Linux)
+- Upgrade: `pip install --upgrade pip`
+
+> **Note**: When a virtual environment is active, `python` and `pip` work on all platforms. The commands below assume a venv is active.
 
 **Operating System**:
 - ✅ macOS (tested)
@@ -58,7 +64,7 @@ App opens at: `http://localhost:8501`
 
 ```bash
 # Clone or download the repository
-cd H2O.ai SumBench
+cd "H2O.ai SumBench"
 
 # Install all dependencies
 pip install -r requirements.txt
@@ -108,22 +114,23 @@ You will need:
 #### Step 2: Create .env File
 
 ```bash
-# In project root directory
-nano .env
+# Copy the template and fill in your credentials
+cp .env.example .env
+nano .env   # or: notepad .env (Windows)
 ```
 
-Add these lines:
+Set these values in `.env`:
 ```
 H2OGPTE_API_KEY=sk-your-actual-key-here
 H2OGPTE_ADDRESS=https://your-actual-instance.h2ogpte.com
 ```
 
-Save and exit (Ctrl+O, Ctrl+X in nano)
+Save and exit (Ctrl+O, Ctrl+X in nano; or just save in Notepad)
 
 #### Step 3: Verify Configuration
 
 ```bash
-python3 tests/test_h2ogpte_api.py
+python tests/test_h2ogpte_api.py
 ```
 
 **Expected output**:
@@ -149,7 +156,7 @@ Simply skip the API configuration step.
 
 ```bash
 # Test all metrics (requires .env for API metrics)
-python3 -m pytest tests/test_all_metrics.py -v
+python -m pytest tests/test_all_metrics.py -v
 ```
 
 ### Expected Output
@@ -188,8 +195,18 @@ pip install -r requirements.txt --force-reinstall
 - Check internet connection
 - Configure proxy if needed:
   ```bash
+  # macOS/Linux
   export http_proxy=http://proxy:port
   export https_proxy=http://proxy:port
+
+  # Windows CMD
+  set http_proxy=http://proxy:port
+  set https_proxy=http://proxy:port
+
+  # Windows PowerShell
+  $env:http_proxy = "http://proxy:port"
+  $env:https_proxy = "http://proxy:port"
+
   pip install -r requirements.txt
   ```
 
@@ -200,7 +217,7 @@ pip install -r requirements.txt --force-reinstall
 **Solutions**:
 1. Close other applications
 2. Use fewer metrics at once (disable Era 2 or 3A)
-3. Increase swap space:
+3. Increase swap space (Linux only — macOS and Windows use dynamic paging):
    ```bash
    # Linux
    sudo fallocate -l 4G /swapfile
@@ -221,7 +238,7 @@ pip install -r requirements.txt --force-reinstall
 
 **Debug**:
 ```bash
-python3 tests/test_h2ogpte_api.py
+python tests/test_h2ogpte_api.py
 ```
 
 ### Issue: "Invalid model" error
@@ -235,7 +252,7 @@ python3 tests/test_h2ogpte_api.py
 
 **Check available models**:
 ```bash
-python3 tests/test_corrected_models.py
+python tests/test_corrected_models.py
 ```
 
 ### Issue: DLL initialization failed (`c10.dll`) on Windows
@@ -275,8 +292,16 @@ streamlit run ui/app.py --server.port 8502
 Change where models are downloaded:
 
 ```bash
-# Set environment variable
+# macOS/Linux
 export HF_HOME=/path/to/custom/cache
+streamlit run ui/app.py
+
+# Windows CMD
+set HF_HOME=C:\path\to\custom\cache
+streamlit run ui/app.py
+
+# Windows PowerShell
+$env:HF_HOME = "C:\path\to\custom\cache"
 streamlit run ui/app.py
 ```
 
@@ -352,7 +377,14 @@ Models auto-update on launch if newer versions available.
 
 To force re-download:
 ```bash
+# macOS/Linux
 rm -rf ~/.cache/huggingface/transformers
+
+# Windows CMD
+rmdir /s /q "%USERPROFILE%\.cache\huggingface\transformers"
+
+# Windows PowerShell
+Remove-Item -Recurse -Force "$env:USERPROFILE\.cache\huggingface\transformers"
 ```
 
 ---
@@ -362,11 +394,17 @@ rm -rf ~/.cache/huggingface/transformers
 ### Remove Application
 
 ```bash
-# Keep models for future use
-rm -rf H2O.ai SumBench
+# macOS/Linux
+rm -rf "H2O.ai SumBench"
+rm -rf ~/.cache/huggingface          # optional: remove cached models (~3GB)
 
-# Remove models too (frees ~3GB)
-rm -rf ~/.cache/huggingface
+# Windows CMD
+rmdir /s /q "H2O.ai SumBench"
+rmdir /s /q "%USERPROFILE%\.cache\huggingface"
+
+# Windows PowerShell
+Remove-Item -Recurse -Force "H2O.ai SumBench"
+Remove-Item -Recurse -Force "$env:USERPROFILE\.cache\huggingface"
 ```
 
 ### Remove Python Packages
@@ -379,26 +417,61 @@ pip uninstall -r requirements.txt -y
 
 ## Docker Setup (Optional)
 
-For containerized deployment:
+A production-ready `Dockerfile` is included in the project root.
 
-```dockerfile
-FROM python:3.10-slim
+### Build
 
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-COPY . .
-EXPOSE 8501
-
-CMD ["streamlit", "run", "ui/app.py"]
-```
-
-Build and run:
 ```bash
 docker build -t sumbench .
-docker run -p 8501:8501 -v $(pwd)/.env:/app/.env sumbench
 ```
+
+First build takes ~10 minutes (downloads Python packages and NLP models).
+Subsequent builds are fast thanks to layer caching.
+
+### Run
+
+```bash
+# Mount your .env for API credentials and persist the model cache
+docker run -p 8501:8501 \
+  -v $(pwd)/.env:/app/.env \
+  -v sumbench-hf-cache:/root/.cache/huggingface \
+  sumbench
+```
+
+> **Windows CMD**: replace `$(pwd)` with `%cd%`
+> **PowerShell**: replace `$(pwd)` with `${PWD}`
+
+Open `http://localhost:8501` in your browser.
+
+### Docker Compose (optional)
+
+Add this to a `docker-compose.yml` in the project root:
+
+```yaml
+services:
+  sumbench:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./.env:/app/.env
+      - hf-cache:/root/.cache/huggingface
+    restart: unless-stopped
+
+volumes:
+  hf-cache:
+```
+
+Then run:
+```bash
+docker compose up --build
+```
+
+### Notes
+
+- **First run**: HuggingFace models (~6GB) download on first evaluation. Use the `hf-cache` volume to persist them across container restarts.
+- **No GPU required**: All metrics run on CPU.
+- **Healthcheck**: The container includes a healthcheck at `/_stcore/health`.
 
 ---
 
@@ -415,36 +488,38 @@ docker run -p 8501:8501 -v $(pwd)/.env:/app/.env sumbench
 
 ```bash
 # Check Python version
-python3 --version
+python --version
 
-# Check installed packages
+# Check installed packages (macOS/Linux)
 pip list | grep -E "(streamlit|transformers|torch|h2ogpte)"
+# Windows CMD
+pip list | findstr "streamlit transformers torch h2ogpte"
 
 # Test all metrics
-python3 -m pytest tests/test_all_metrics.py -v
+python -m pytest tests/test_all_metrics.py -v
 
 # Test API
-python3 tests/test_h2ogpte_api.py
+python tests/test_h2ogpte_api.py
 ```
 
 ### Common Diagnostic Commands
 
 ```bash
 # Check disk space
-df -h
+df -h                    # macOS/Linux
+dir                      # Windows (shows free space per drive)
 
 # Check RAM usage
-free -h  # Linux
-top      # macOS/Linux
+free -h                  # Linux
+top                      # macOS/Linux
+tasklist                 # Windows
 
 # Check internet
 ping google.com
 
 # Check Python path
-which python3
-
-# Check pip path
-which pip3
+which python             # macOS/Linux
+where python             # Windows
 ```
 
 ---
