@@ -379,8 +379,8 @@ See [CHANGELOG.md](docs/CHANGELOG.md) for full details.
 
 ## Authors
 
-**Jed Lee** — [jed.lee@h2o.ai](mailto:jed.lee@h2o.ai)
-**Justin Siow** — [justin.siow@h2o.ai](mailto:justin.siow@h2o.ai)
+* **Jed Lee** — [jed.lee@h2o.ai](mailto:jed.lee@h2o.ai)
+* **Justin Siow** — [justin.siow@h2o.ai](mailto:justin.siow@h2o.ai)
 
 ---
 
