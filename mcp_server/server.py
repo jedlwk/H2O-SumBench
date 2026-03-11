@@ -8,11 +8,30 @@ import subprocess
 
 # Install dependencies before importing local modules
 def install_dependencies():
-    """Install dependencies from requirements.txt if present."""
+    """Install dependencies from local wheels (airgapped) or requirements.txt (online)."""
     server_dir = os.path.dirname(os.path.abspath(__file__))
+    wheels_dir = os.path.join(server_dir, 'wheels')
     requirements_path = os.path.join(server_dir, 'requirements.txt')
+    nltk_data_dir = os.path.join(server_dir, 'nltk_data')
 
-    if os.path.exists(requirements_path):
+    if os.path.isdir(wheels_dir) and os.listdir(wheels_dir):
+        # Airgapped mode: install from bundled wheels
+        print(f"[MCP Server] Found bundled wheels at {wheels_dir}")
+        print(f"[MCP Server] Installing dependencies offline (--no-index)...")
+        try:
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "-q",
+                 "--no-index", "--find-links", wheels_dir,
+                 "-r", requirements_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+            print("[MCP Server] Dependencies installed successfully (offline).")
+        except subprocess.CalledProcessError as e:
+            print(f"[MCP Server] Warning: Offline install failed: {e}")
+            print("[MCP Server] Continuing with existing packages...")
+    elif os.path.exists(requirements_path):
+        # Online mode: original behavior
         print(f"[MCP Server] Installing dependencies from {requirements_path}...")
         try:
             subprocess.check_call(
@@ -26,6 +45,11 @@ def install_dependencies():
             print("[MCP Server] Continuing with existing packages...")
     else:
         print(f"[MCP Server] No requirements.txt found at {requirements_path}")
+
+    # Set NLTK_DATA if bundled nltk_data directory exists
+    if os.path.isdir(nltk_data_dir):
+        os.environ['NLTK_DATA'] = nltk_data_dir
+        print(f"[MCP Server] Using bundled NLTK data at {nltk_data_dir}")
 
 # Install dependencies before any local imports
 install_dependencies()

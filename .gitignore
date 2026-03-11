@@ -105,5 +105,5 @@ Thumbs.db
 !data/processed/sample_finance_accidents.json
 
 # MCP Server build artifacts
-*.zip
+mcp_server/*.zip
 mcp_server/dist_mcp/
