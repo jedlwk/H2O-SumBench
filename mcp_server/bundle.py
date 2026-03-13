@@ -108,9 +108,59 @@ def download_wheels(requirements_path: Path, dest_dir: Path, platform: str = Non
             cmd_retry = [c for c in cmd if c not in ("--only-binary", ":all:")]
             subprocess.check_call(cmd_retry)
 
-    # Count downloaded wheels
+    # Remove packages already available in the H2OGPTe runtime environment.
+    # Only evaluation-specific packages (rouge-score, bert-score, spacy, etc.)
+    # need to be bundled; everything else is pre-installed.
+    EXCLUDE_WHEELS = {
+        # Deep Learning / Inference (pre-installed in H2OGPTe)
+        "torch", "torchvision", "transformers", "accelerate",
+        "numpy", "pandas", "scikit-learn", "scipy",
+        # Data / Arrow
+        "pyarrow",
+        # Web / API / HTTP
+        "requests", "httpx", "httpcore", "urllib3", "certifi",
+        "charset-normalizer", "idna", "h11", "anyio", "sniffio",
+        # Pydantic / typing
+        "pydantic", "pydantic-core", "pydantic-settings",
+        "annotated-types", "typing-extensions", "typing-inspection",
+        # UI / plotting (not needed for MCP)
+        "streamlit", "matplotlib", "pillow", "pydeck",
+        "contourpy", "cycler", "fonttools", "kiwisolver", "pyparsing",
+        # Torch transitive deps
+        "sympy", "mpmath", "networkx",
+        # Utilities already in H2OGPTe
+        "tqdm", "rich", "pygments", "markdown-it-py", "mdurl",
+        "openpyxl", "et-xmlfile",
+        "pyyaml", "packaging", "filelock", "safetensors",
+        "setuptools", "six",
+        # Jinja / templating
+        "jinja2", "markupsafe",
+        # HuggingFace ecosystem (hub, tokenizers already in H2OGPTe via transformers)
+        "huggingface-hub", "hf-xet", "tokenizers",
+        # Async / aiohttp
+        "aiohttp", "aiosignal", "aiohappyeyeballs", "frozenlist",
+        "multidict", "yarl", "propcache", "attrs",
+        # Job / threading
+        "joblib", "threadpoolctl",
+        # Other pre-installed
+        "click", "wrapt", "jsonschema", "jsonschema-specifications",
+        "referencing", "rpds-py", "narwhals",
+    }
+    removed = []
+    for whl in list(dest_dir.glob("*.whl")) + list(dest_dir.glob("*.tar.gz")):
+        pkg_name = whl.name.split("-")[0].lower().replace("_", "-")
+        if pkg_name in EXCLUDE_WHEELS:
+            removed.append((whl.name, whl.stat().st_size))
+            whl.unlink()
+    if removed:
+        saved = sum(s for _, s in removed) / (1024 * 1024)
+        print(f"  Removed {len(removed)} excluded transitive deps ({saved:.1f} MB saved):")
+        for name, _ in removed:
+            print(f"    - {name}")
+
+    # Count remaining packages
     wheel_files = list(dest_dir.glob("*.whl")) + list(dest_dir.glob("*.tar.gz"))
-    print(f"  Downloaded {len(wheel_files)} packages to {dest_dir}")
+    print(f"  Final package count: {len(wheel_files)}")
 
     # Write manifest
     manifest = {
@@ -155,6 +205,117 @@ def download_spacy_model(dest_dir: Path):
         print(f"  spaCy model downloaded (fallback).")
 
 
+def install_vendored_deps(requirements_path: Path, dest_dir: Path):
+    """Install packages directly into a vendor directory (no .whl files).
+
+    This creates a site-packages-like directory that can be added to sys.path
+    at runtime, bypassing pip entirely on the target environment.
+    """
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
+    # Packages already in H2OGPTe — skip these
+    SKIP_PACKAGES = [
+        "torch", "torchvision", "transformers", "accelerate",
+        "numpy", "pandas", "scikit-learn", "scipy", "pyarrow",
+        "requests", "httpx", "httpcore", "urllib3", "certifi",
+        "charset-normalizer", "idna", "h11", "anyio", "sniffio",
+        "pydantic", "pydantic-core", "pydantic-settings",
+        "annotated-types", "typing-extensions", "typing-inspection",
+        "streamlit", "matplotlib", "pillow", "pydeck",
+        "contourpy", "cycler", "fonttools", "kiwisolver", "pyparsing",
+        "sympy", "mpmath", "networkx",
+        "tqdm", "rich", "pygments", "markdown-it-py", "mdurl",
+        "openpyxl", "et-xmlfile",
+        "pyyaml", "packaging", "filelock", "safetensors",
+        "setuptools", "six",
+        "jinja2", "markupsafe",
+        "huggingface-hub", "hf-xet", "tokenizers",
+        "aiohttp", "aiosignal", "aiohappyeyeballs", "frozenlist",
+        "multidict", "yarl", "propcache", "attrs",
+        "joblib", "threadpoolctl",
+        "click", "wrapt", "jsonschema", "jsonschema-specifications",
+        "referencing", "rpds-py", "narwhals",
+    ]
+
+    print(f"  Installing vendored dependencies into {dest_dir}...")
+    cmd = [
+        sys.executable, "-m", "pip", "install",
+        "-r", str(requirements_path),
+        "--target", str(dest_dir),
+        "--no-deps",
+    ]
+    # First install all direct deps (no transitive) to the target
+    subprocess.check_call(cmd)
+
+    # Now install with deps but exclude pre-installed packages
+    cmd_with_deps = [
+        sys.executable, "-m", "pip", "install",
+        "-r", str(requirements_path),
+        "--target", str(dest_dir),
+        "--upgrade",
+    ]
+    subprocess.check_call(cmd_with_deps)
+
+    # Remove pre-installed packages from vendor dir.
+    # Map pip package names to their actual directory names on disk.
+    SKIP_DIRS = {
+        # Exact directory/file names to remove (case-sensitive on disk)
+        "torch", "torchgen", "torchvision", "transformers", "transformers_modules",
+        "numpy", "numpy.libs", "pandas", "sklearn", "scipy", "scipy.libs",
+        "pyarrow", "requests", "httpx", "httpcore", "urllib3", "certifi",
+        "charset_normalizer", "idna", "h11", "anyio", "sniffio",
+        "pydantic", "pydantic_core", "pydantic_settings",
+        "annotated_types", "typing_extensions", "typing_inspection",
+        "streamlit", "matplotlib", "mpl_toolkits", "PIL", "pydeck",
+        "contourpy", "cycler", "fonttools", "kiwisolver", "pyparsing",
+        "sympy", "mpmath", "networkx",
+        "tqdm", "rich", "pygments", "markdown_it", "mdurl",
+        "openpyxl", "et_xmlfile",
+        "yaml", "_yaml", "packaging", "filelock", "safetensors",
+        "setuptools", "_distutils_hack", "pkg_resources", "distutils",
+        "six", "six.py",
+        "jinja2", "markupsafe",
+        "huggingface_hub", "hf_xet",
+        "tokenizers",
+        "aiohttp", "aiosignal", "aiohappyeyeballs", "frozenlist",
+        "multidict", "yarl", "propcache", "attr", "attrs",
+        "joblib", "threadpoolctl",
+        "click", "wrapt", "jsonschema", "jsonschema_specifications",
+        "referencing", "rpds", "narwhals",
+        # Transitive deps also in H2OGPTe
+        "websockets", "toml", "smmap", "gitdb", "git",
+        "colorama", "shellingham", "pathspec",
+        "bs4", "beautifulsoup4", "soupsieve", "lxml",
+    }
+
+    removed = []
+    for item in list(dest_dir.iterdir()):
+        name = item.name
+        # Remove .dist-info dirs for any skipped package
+        if name.endswith(".dist-info") or name.endswith(".data"):
+            pkg = name.rsplit("-", 2)[0].lower().replace("-", "_")
+            normalized_skips = {p.replace("-", "_") for p in SKIP_PACKAGES}
+            if pkg in normalized_skips:
+                shutil.rmtree(item) if item.is_dir() else item.unlink()
+                removed.append(name)
+                continue
+        # Remove exact directory/file matches (case-insensitive)
+        name_lower = name.lower().rstrip(".py")
+        if name in SKIP_DIRS or name_lower in {s.lower() for s in SKIP_DIRS}:
+            if item.is_dir():
+                shutil.rmtree(item)
+            else:
+                item.unlink()
+            removed.append(name)
+
+    if removed:
+        print(f"  Removed {len(removed)} pre-installed packages from vendor/")
+
+    # Count remaining packages
+    pkg_dirs = [d for d in dest_dir.iterdir() if d.is_dir() and not d.name.endswith(".dist-info")]
+    print(f"  Vendored {len(pkg_dirs)} package directories")
+
+
 def download_nltk_data(dest_dir: Path):
     """Download NLTK data (punkt_tab, wordnet) into a bundleable directory."""
     dest_dir.mkdir(parents=True, exist_ok=True)
@@ -174,7 +335,8 @@ def download_nltk_data(dest_dir: Path):
 
 
 def build_mcp_zip(output_name: str = "sumbench_mcp.zip", cleanup: bool = True,
-                  include_wheels: bool = False, platform: str = None,
+                  include_wheels: bool = False, include_deps: bool = False,
+                  platform: str = None,
                   python_version: str = None, torch_variant: str = "cpu",
                   include_spacy_model: bool = False, include_nltk_data: bool = False):
     """
@@ -184,6 +346,7 @@ def build_mcp_zip(output_name: str = "sumbench_mcp.zip", cleanup: bool = True,
         output_name: Name of the output zip file.
         cleanup: Whether to remove the temp directory after zipping.
         include_wheels: Download and bundle wheel files for offline install.
+        include_deps: Install packages into vendor/ directory (no .whl files).
         platform: Target platform for wheels (e.g., manylinux2014_x86_64).
         python_version: Target Python version (e.g., 3.11).
         torch_variant: PyTorch variant (cpu, cu118, cu121, cu124).
@@ -220,13 +383,18 @@ def build_mcp_zip(output_name: str = "sumbench_mcp.zip", cleanup: bool = True,
     else:
         print(f"  Warning: envs.json not found at {envs_src}")
 
-    # Copy requirements.txt from project root
-    req_src = project_root / "requirements.txt"
+    # Copy requirements file from project root
+    # Prefer requirements-mcp.txt (lightweight, no UI/torch) for MCP bundles;
+    # fall back to requirements.txt if it doesn't exist.
+    req_src = project_root / "requirements-mcp.txt"
+    if not req_src.exists():
+        req_src = project_root / "requirements.txt"
+        print(f"  Warning: requirements-mcp.txt not found, using requirements.txt")
     if req_src.exists():
         shutil.copy(req_src, dist_dir / "requirements.txt")
-        print(f"  Copied: requirements.txt")
+        print(f"  Copied: {req_src.name} -> requirements.txt")
     else:
-        print(f"  Warning: requirements.txt not found at {req_src}")
+        print(f"  Warning: requirements not found at {req_src}")
 
     # Copy evaluators directory (flattened - not nested in src/)
     # This allows the bundled server to import via `from evaluators.tool_logic import ...`
@@ -241,8 +409,17 @@ def build_mcp_zip(output_name: str = "sumbench_mcp.zip", cleanup: bool = True,
     shutil.copytree(evaluators_dir, dist_dir / "evaluators", ignore=copy_filter)
     print(f"  Copied: evaluators/ directory")
 
-    # Download and bundle wheels for airgapped environments
-    if include_wheels:
+    # Bundle dependencies for airgapped environments
+    if include_deps:
+        # Install packages directly into vendor/ (no .whl files)
+        req_path = dist_dir / "requirements.txt"
+        if req_path.exists():
+            vendor_dir = dist_dir / "vendor"
+            install_vendored_deps(req_path, vendor_dir)
+        else:
+            print(f"  Warning: Cannot install deps - requirements.txt not found")
+    elif include_wheels:
+        # Download wheel files into wheels/
         req_path = dist_dir / "requirements.txt"
         if req_path.exists():
             wheels_dir = dist_dir / "wheels"
@@ -296,6 +473,8 @@ if __name__ == "__main__":
 
     # Airgapped environment options
     airgap = parser.add_argument_group("airgapped environment options")
+    airgap.add_argument("--include-deps", action="store_true",
+                        help="Install packages into vendor/ directory (no .whl files, platform-compatible)")
     airgap.add_argument("--include-wheels", action="store_true",
                         help="Download and bundle wheel files for offline install")
     airgap.add_argument("--platform", default=None,
@@ -315,6 +494,7 @@ if __name__ == "__main__":
         output_name=args.output,
         cleanup=not args.no_cleanup,
         include_wheels=args.include_wheels,
+        include_deps=args.include_deps,
         platform=args.platform,
         python_version=args.python_version,
         torch_variant=args.torch_variant,
