@@ -8,13 +8,18 @@ import subprocess
 
 # Install dependencies before importing local modules
 def install_dependencies():
-    """Install dependencies from local wheels (airgapped) or requirements.txt (online)."""
+    """Install dependencies from vendor/ dir, local wheels, or requirements.txt."""
     server_dir = os.path.dirname(os.path.abspath(__file__))
+    vendor_dir = os.path.join(server_dir, 'vendor')
     wheels_dir = os.path.join(server_dir, 'wheels')
     requirements_path = os.path.join(server_dir, 'requirements.txt')
     nltk_data_dir = os.path.join(server_dir, 'nltk_data')
 
-    if os.path.isdir(wheels_dir) and os.listdir(wheels_dir):
+    if os.path.isdir(vendor_dir) and os.listdir(vendor_dir):
+        # Vendored mode: add vendor/ to sys.path (no pip needed)
+        sys.path.insert(0, vendor_dir)
+        print(f"[MCP Server] Using vendored packages from {vendor_dir}")
+    elif os.path.isdir(wheels_dir) and os.listdir(wheels_dir):
         # Airgapped mode: install from bundled wheels
         print(f"[MCP Server] Found bundled wheels at {wheels_dir}")
         print(f"[MCP Server] Installing dependencies offline (--no-index)...")
