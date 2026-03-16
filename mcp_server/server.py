@@ -8,13 +8,21 @@ import subprocess
 
 # Install dependencies before importing local modules
 def install_dependencies():
-    """Install dependencies from local wheels (airgapped) or requirements.txt (online)."""
+    """Install dependencies from vendor/ dir, local wheels, or requirements.txt."""
     server_dir = os.path.dirname(os.path.abspath(__file__))
+    vendor_dir = os.path.join(server_dir, 'vendor')
     wheels_dir = os.path.join(server_dir, 'wheels')
     requirements_path = os.path.join(server_dir, 'requirements.txt')
     nltk_data_dir = os.path.join(server_dir, 'nltk_data')
 
-    if os.path.isdir(wheels_dir) and os.listdir(wheels_dir):
+    if os.path.isdir(vendor_dir) and os.listdir(vendor_dir):
+        # Vendored mode: add vendor/ to sys.path (no pip needed)
+        sys.path.insert(0, vendor_dir)
+        # Prevent HuggingFace from attempting network requests in airgapped env
+        os.environ.setdefault('HF_HUB_OFFLINE', '1')
+        os.environ.setdefault('TRANSFORMERS_OFFLINE', '1')
+        print(f"[MCP Server] Using vendored packages from {vendor_dir}")
+    elif os.path.isdir(wheels_dir) and os.listdir(wheels_dir):
         # Airgapped mode: install from bundled wheels
         print(f"[MCP Server] Found bundled wheels at {wheels_dir}")
         print(f"[MCP Server] Installing dependencies offline (--no-index)...")
@@ -54,6 +62,26 @@ def install_dependencies():
 # Install dependencies before any local imports
 install_dependencies()
 
+
+def _is_airgapped():
+    """Detect whether the server is running in an airgapped environment.
+
+    Detection priority:
+      1. SUMBENCH_FORCE_ALL_METRICS=1 → always False (operator override)
+      2. SUMBENCH_AIRGAPPED=1         → always True  (explicit flag)
+      3. vendor/ directory exists      → True          (auto-detect)
+    """
+    if os.environ.get('SUMBENCH_FORCE_ALL_METRICS', '').strip() == '1':
+        return False
+    if os.environ.get('SUMBENCH_AIRGAPPED', '').strip() == '1':
+        return True
+    server_dir = os.path.dirname(os.path.abspath(__file__))
+    vendor_dir = os.path.join(server_dir, 'vendor')
+    return os.path.isdir(vendor_dir) and bool(os.listdir(vendor_dir))
+
+
+_AIRGAPPED_MODE = _is_airgapped()
+
 from mcp.server.fastmcp import FastMCP
 
 # Try/except imports for both development and bundled modes
@@ -84,30 +112,35 @@ METRIC_CATALOG = {
         'score_range': '0-1 (F1)',
         'description': 'Word and phrase overlap using ROUGE-1/2/L',
         'recommended_for': ['source+reference', 'reference_only'],
+        'requires_model': None,
     },
     'bleu': {
         'category': 'Word Overlap',
         'score_range': '0-1',
         'description': 'N-gram precision (BLEU)',
         'recommended_for': ['source+reference', 'reference_only'],
+        'requires_model': None,
     },
     'meteor': {
         'category': 'Word Overlap',
         'score_range': '0-1',
         'description': 'Alignment-based overlap with synonyms and stemming',
         'recommended_for': ['source+reference', 'reference_only'],
+        'requires_model': None,
     },
     'levenshtein': {
         'category': 'Word Overlap',
         'score_range': '0-1 (normalized similarity)',
         'description': 'Character-level edit distance similarity',
         'recommended_for': ['source+reference', 'reference_only'],
+        'requires_model': None,
     },
     'chrf': {
         'category': 'Word Overlap',
         'score_range': '0-100',
         'description': 'Character n-gram F-score (chrF++)',
         'recommended_for': ['source+reference', 'reference_only'],
+        'requires_model': None,
     },
     # Fluency
     'perplexity': {
@@ -115,6 +148,7 @@ METRIC_CATALOG = {
         'score_range': '1+ (lower is better)',
         'description': 'Language model perplexity — measures fluency',
         'recommended_for': ['source+reference', 'reference_only', 'neither'],
+        'requires_model': 'hf:gpt2',
     },
     # Semantic
     'bertscore': {
@@ -122,6 +156,7 @@ METRIC_CATALOG = {
         'score_range': '0-1 (F1)',
         'description': 'Contextual embedding similarity (BERTScore F1)',
         'recommended_for': ['source+reference', 'reference_only'],
+        'requires_model': 'hf:distilbert-base-uncased',
     },
     # Completeness
     'entity_coverage': {
@@ -129,18 +164,21 @@ METRIC_CATALOG = {
         'score_range': '0-1',
         'description': 'Fraction of source named entities retained in summary',
         'recommended_for': ['source+reference', 'source_only'],
+        'requires_model': 'spacy:en_core_web_sm',
     },
     'semantic_coverage': {
         'category': 'Completeness',
         'score_range': '0-1',
         'description': 'Sentence-level semantic coverage of source content',
         'recommended_for': ['source+reference', 'source_only'],
+        'requires_model': 'hf:all-MiniLM-L6-v2',
     },
     'bertscore_recall': {
         'category': 'Completeness',
         'score_range': '0-1',
         'description': 'BERTScore recall — how much source content is captured',
         'recommended_for': ['source+reference', 'source_only'],
+        'requires_model': 'hf:distilbert-base-uncased',
     },
     # LLM Judge
     'llm_faithfulness': {
@@ -148,42 +186,49 @@ METRIC_CATALOG = {
         'score_range': '1-5',
         'description': 'G-Eval faithfulness — factual consistency with source',
         'recommended_for': ['source+reference', 'source_only'],
+        'requires_model': None,
     },
     'llm_coherence': {
         'category': 'LLM Judge',
         'score_range': '1-5',
         'description': 'G-Eval coherence — logical flow and structure',
         'recommended_for': ['source+reference', 'reference_only'],
+        'requires_model': None,
     },
     'llm_relevance': {
         'category': 'LLM Judge',
         'score_range': '1-5',
         'description': 'G-Eval relevance — pertinence to the source topic',
         'recommended_for': ['source+reference', 'source_only'],
+        'requires_model': None,
     },
     'llm_fluency': {
         'category': 'LLM Judge',
         'score_range': '1-5',
         'description': 'G-Eval fluency — grammar and readability',
         'recommended_for': ['source+reference', 'neither'],
+        'requires_model': None,
     },
     'llm_dag': {
         'category': 'LLM Judge',
         'score_range': '1-5',
         'description': 'DAG — holistic quality assessment via LLM',
         'recommended_for': ['source+reference'],
+        'requires_model': None,
     },
     'llm_prometheus': {
         'category': 'LLM Judge',
         'score_range': '1-5',
         'description': 'Prometheus — fine-grained LLM evaluation',
         'recommended_for': ['source+reference'],
+        'requires_model': None,
     },
     'factchecker_api': {
         'category': 'LLM Judge',
         'score_range': '0-1',
         'description': 'LLM-based fact-checking against the source document',
         'recommended_for': ['source+reference', 'source_only'],
+        'requires_model': None,
     },
 }
 
@@ -206,11 +251,19 @@ def _detect_scenario(source, reference):
 
 
 def _metrics_for_scenario(scenario):
-    """Return the list of metric names appropriate for a scenario."""
-    return [
+    """Return (metrics_to_run, skipped_metrics) for a scenario.
+
+    In airgapped mode, metrics requiring model downloads are skipped.
+    """
+    all_metrics = [
         name for name, info in METRIC_CATALOG.items()
         if scenario in info['recommended_for']
     ]
+    if not _AIRGAPPED_MODE:
+        return all_metrics, []
+    run = [m for m in all_metrics if METRIC_CATALOG[m].get('requires_model') is None]
+    skipped = [m for m in all_metrics if METRIC_CATALOG[m].get('requires_model') is not None]
+    return run, skipped
 
 
 def _extract_primary_score(metric_name: str, result: dict) -> str:
@@ -310,10 +363,16 @@ def evaluate_summary(summary: str, source: str = None, reference: str = None):
         summary + reference          →  8 metrics (word overlap & semantic)
         summary only                 →  2 metrics (fluency only)
 
+    In airgapped environments (no internet), metrics requiring model downloads
+    (perplexity, bertscore, entity_coverage, semantic_coverage, bertscore_recall)
+    are automatically skipped. Set SUMBENCH_FORCE_ALL_METRICS=1 to override
+    if models are pre-cached.
+
     Returns a dict with:
         - Per-metric results (scores, interpretation, errors)
         - _scenario: which input combination was detected
         - _metrics_used: list of metric names that were run
+        - _skipped_metrics: (airgapped only) metrics skipped and reason
         - _summary: score_table, overall_quality, and formatting guidance
 
     Present the results as a Markdown table with columns:
@@ -321,10 +380,17 @@ def evaluate_summary(summary: str, source: str = None, reference: str = None):
     Add 3-4 bullet-point insights and an overall assessment.
     """
     scenario = _detect_scenario(source, reference)
-    metrics = _metrics_for_scenario(scenario)
+    metrics, skipped = _metrics_for_scenario(scenario)
     results = run_multiple_metrics(metrics, summary, source, reference)
     results['_scenario'] = scenario
     results['_metrics_used'] = metrics
+    if skipped:
+        results['_skipped_metrics'] = {
+            'metrics': skipped,
+            'reason': 'Airgapped mode: these metrics require model downloads '
+                      'not available offline. Set SUMBENCH_FORCE_ALL_METRICS=1 '
+                      'if models are pre-cached.',
+        }
     results['_summary'] = _build_summary(results)
     return results
 
@@ -334,7 +400,8 @@ def list_metrics():
     """List all 17 evaluation metrics available in SumBench.
 
     Returns a list of metric objects with: name, category, score_range,
-    description, and recommended_for (which scenarios use the metric).
+    description, recommended_for, and available_in_airgap.
+    In airgapped mode, model-dependent metrics show status 'disabled (airgapped)'.
     """
     all_metrics = list_available_metrics()
     enriched = []
@@ -350,6 +417,10 @@ def list_metrics():
             entry['category'] = info['category']
         if 'description' not in entry:
             entry['description'] = info['description']
+        needs_model = info.get('requires_model') is not None
+        entry['available_in_airgap'] = not needs_model
+        if _AIRGAPPED_MODE and needs_model:
+            entry['status'] = 'disabled (airgapped)'
         enriched.append(entry)
     return enriched
 
