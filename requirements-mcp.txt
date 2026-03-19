@@ -14,7 +14,7 @@ openpyxl>=3.1.2             # Excel file support
 transformers>=4.45.0        # HuggingFace models (NLI, FactCC, AlignScore, Perplexity)
 tokenizers>=0.20.3          # Fast tokenization
 sentencepiece>=0.2.0        # Tokenizer for some models
-tiktoken>=0.12.0            # Tokenizer for NLI / OpenAI-style models
+tiktoken>=0.11.0            # Tokenizer for NLI / OpenAI-style models
 protobuf>=3.20.0            # Model serialization
 
 # =============================================================================
@@ -42,6 +42,7 @@ spacy>=3.7.5                # Named Entity Recognition
 # API Metrics (G-Eval, DAG, Prometheus)
 # =============================================================================
 h2ogpte==1.6.47             # H2OGPTE API client
+aiohttp-retry>=2.9.1        # Required by h2ogpte (transitive dep, not pre-installed)
 python-dotenv==1.0.0        # Load .env credentials
 
 # =============================================================================

@@ -338,7 +338,8 @@ def build_mcp_zip(output_name: str = "sumbench_mcp.zip", cleanup: bool = True,
                   include_wheels: bool = False, include_deps: bool = False,
                   platform: str = None,
                   python_version: str = None, torch_variant: str = "cpu",
-                  include_spacy_model: bool = False, include_nltk_data: bool = False):
+                  include_spacy_model: bool = False, include_nltk_data: bool = False,
+                  airgapped: bool = False):
     """
     Build a zip file containing the MCP server and all dependencies.
 
@@ -352,6 +353,9 @@ def build_mcp_zip(output_name: str = "sumbench_mcp.zip", cleanup: bool = True,
         torch_variant: PyTorch variant (cpu, cu118, cu121, cu124).
         include_spacy_model: Bundle en_core_web_sm spaCy model.
         include_nltk_data: Bundle NLTK data (punkt_tab, wordnet).
+        airgapped: Inject airgapped env vars into envs.json so the MCP
+            server skips model-download metrics (SUMBENCH_AIRGAPPED,
+            HF_HUB_OFFLINE, TRANSFORMERS_OFFLINE).
     """
     base_dir = Path(__file__).parent
     project_root = base_dir.parent
@@ -382,6 +386,28 @@ def build_mcp_zip(output_name: str = "sumbench_mcp.zip", cleanup: bool = True,
         print(f"  Copied: envs.json")
     else:
         print(f"  Warning: envs.json not found at {envs_src}")
+
+    # Patch server.py to inject airgapped env vars at startup
+    if airgapped:
+        server_dst = dist_dir / "server.py"
+        content = server_dst.read_text()
+        # Insert env var setup right after the 'import subprocess' line
+        airgap_block = (
+            "\n"
+            "# Airgapped mode: set at bundle time via --airgapped flag.\n"
+            "# Ensures model-download metrics are skipped and HuggingFace/\n"
+            "# transformers don't attempt network requests.\n"
+            "os.environ.setdefault('SUMBENCH_AIRGAPPED', '1')\n"
+            "os.environ.setdefault('HF_HUB_OFFLINE', '1')\n"
+            "os.environ.setdefault('TRANSFORMERS_OFFLINE', '1')\n"
+        )
+        content = content.replace(
+            "import subprocess\n",
+            "import subprocess\n" + airgap_block,
+            1,
+        )
+        server_dst.write_text(content)
+        print(f"  Patched: server.py (airgapped env vars injected)")
 
     # Copy requirements file from project root
     # Prefer requirements-mcp.txt (lightweight, no UI/torch) for MCP bundles;
@@ -488,6 +514,10 @@ if __name__ == "__main__":
                         help="Bundle en_core_web_sm spaCy model")
     airgap.add_argument("--include-nltk-data", action="store_true",
                         help="Bundle NLTK data (punkt_tab, wordnet)")
+    airgap.add_argument("--airgapped", action="store_true",
+                        help="Inject SUMBENCH_AIRGAPPED=1, HF_HUB_OFFLINE=1, "
+                             "TRANSFORMERS_OFFLINE=1 into envs.json so the MCP "
+                             "server skips model-download metrics")
 
     args = parser.parse_args()
     build_mcp_zip(
@@ -500,4 +530,5 @@ if __name__ == "__main__":
         torch_variant=args.torch_variant,
         include_spacy_model=args.include_spacy_model,
         include_nltk_data=args.include_nltk_data,
+        airgapped=args.airgapped,
     )
