@@ -5,6 +5,7 @@ These metrics measure text similarity through exact word matching,
 with some variants supporting synonyms and stemming.
 """
 
+import os
 from typing import Dict
 import warnings
 
@@ -205,22 +206,36 @@ def compute_meteor_score(
         else:
             ssl._create_default_https_context = _create_unverified_https_context
 
-        # Ensure required NLTK data is available
+        # Ensure required NLTK data is available.
+        # In airgapped environments, NLTK_DATA should point to bundled data.
+        # We only attempt download if not airgapped (HF_HUB_OFFLINE not set).
+        is_offline = os.environ.get('HF_HUB_OFFLINE') == '1' or os.environ.get('SUMBENCH_AIRGAPPED') == '1'
         required_data = [
             ('corpora/wordnet', 'wordnet'),
             ('corpora/omw-1.4', 'omw-1.4'),
+            ('tokenizers/punkt_tab', 'punkt_tab'),
             ('tokenizers/punkt', 'punkt'),
-            ('tokenizers/punkt_tab', 'punkt_tab')
         ]
 
+        missing = []
         for path, name in required_data:
             try:
                 nltk.data.find(path)
             except LookupError:
-                try:
-                    nltk.download(name, quiet=True)
-                except:
-                    pass  # Continue even if download fails
+                if is_offline:
+                    missing.append(name)
+                else:
+                    try:
+                        nltk.download(name, quiet=True)
+                    except Exception:
+                        missing.append(name)
+
+        if missing:
+            return {
+                'meteor': None,
+                'error': f"Missing NLTK data: {', '.join(missing)}. "
+                         f"Bundle with: python build_deps.py --include-nltk-data"
+            }
 
         # Tokenize texts
         source_tokens = word_tokenize(comparison_text.lower())

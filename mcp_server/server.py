@@ -7,20 +7,33 @@ import sys
 import subprocess
 
 # Install dependencies before importing local modules
+def _deps_already_installed():
+    """Quick check: can we import key packages needed by the MCP server?"""
+    try:
+        import mcp          # noqa: F401 – MCP framework
+        import rouge_score   # noqa: F401 – ROUGE metric
+        return True
+    except ImportError:
+        return False
+
+
 def install_dependencies():
-    """Install dependencies from vendor/ dir, local wheels, or requirements.txt."""
+    """Install dependencies from vendor/ dir, local wheels, or requirements.txt.
+
+    Skips installation entirely if key packages are already importable
+    (e.g. pre-installed by the agent from deps.zip).
+    """
     server_dir = os.path.dirname(os.path.abspath(__file__))
     vendor_dir = os.path.join(server_dir, 'vendor')
     wheels_dir = os.path.join(server_dir, 'wheels')
     requirements_path = os.path.join(server_dir, 'requirements.txt')
     nltk_data_dir = os.path.join(server_dir, 'nltk_data')
 
-    if os.path.isdir(vendor_dir) and os.listdir(vendor_dir):
+    if _deps_already_installed():
+        print("[MCP Server] Dependencies already installed, skipping.")
+    elif os.path.isdir(vendor_dir) and os.listdir(vendor_dir):
         # Vendored mode: add vendor/ to sys.path (no pip needed)
         sys.path.insert(0, vendor_dir)
-        # Prevent HuggingFace from attempting network requests in airgapped env
-        os.environ.setdefault('HF_HUB_OFFLINE', '1')
-        os.environ.setdefault('TRANSFORMERS_OFFLINE', '1')
         print(f"[MCP Server] Using vendored packages from {vendor_dir}")
     elif os.path.isdir(wheels_dir) and os.listdir(wheels_dir):
         # Airgapped mode: install from bundled wheels
@@ -55,9 +68,16 @@ def install_dependencies():
         print(f"[MCP Server] No requirements.txt found at {requirements_path}")
 
     # Set NLTK_DATA if bundled nltk_data directory exists
-    if os.path.isdir(nltk_data_dir):
-        os.environ['NLTK_DATA'] = nltk_data_dir
-        print(f"[MCP Server] Using bundled NLTK data at {nltk_data_dir}")
+    # Search: server dir first, then CWD (where agent extracts deps.zip)
+    nltk_search_paths = [
+        nltk_data_dir,
+        os.path.join(os.getcwd(), 'nltk_data'),
+    ]
+    for nltk_path in nltk_search_paths:
+        if os.path.isdir(nltk_path):
+            os.environ['NLTK_DATA'] = nltk_path
+            print(f"[MCP Server] Using NLTK data at {nltk_path}")
+            break
 
 # Install dependencies before any local imports
 install_dependencies()
@@ -392,6 +412,18 @@ def evaluate_summary(summary: str, source: str = None, reference: str = None):
                       'if models are pre-cached.',
         }
     results['_summary'] = _build_summary(results)
+
+    # Surface any metric errors clearly so they're visible in the response
+    errors = {}
+    for name, res in results.items():
+        if name.startswith('_'):
+            continue
+        err = res.get('error') if isinstance(res, dict) else None
+        if err:
+            errors[name] = err
+    if errors:
+        results['_errors'] = errors
+
     return results
 
 
@@ -429,6 +461,62 @@ def list_metrics():
 def get_info(metric_name: str):
     """Get detailed information about a specific metric."""
     return get_metric_info(metric_name)
+
+
+@mcp.tool()
+def check_environment():
+    """Check MCP server environment: credentials, NLTK data, airgapped mode.
+
+    Call this FIRST to verify everything is configured before running evaluations.
+    Returns a dict with the status of each component.
+    """
+    status = {
+        'airgapped_mode': _AIRGAPPED_MODE,
+        'nltk_data_path': os.environ.get('NLTK_DATA', 'NOT SET'),
+    }
+
+    # Check NLTK data availability
+    try:
+        import nltk
+        nltk_ok = True
+        for path, name in [('corpora/wordnet', 'wordnet'),
+                           ('tokenizers/punkt_tab', 'punkt_tab')]:
+            try:
+                nltk.data.find(path)
+            except LookupError:
+                nltk_ok = False
+                status[f'nltk_{name}'] = 'MISSING'
+        status['nltk_data_available'] = nltk_ok
+    except ImportError:
+        status['nltk_data_available'] = False
+        status['nltk_error'] = 'nltk package not installed'
+
+    # Check H2OGPTE client connectivity
+    try:
+        from evaluators.h2ogpte_client import is_configured, get_credentials, get_h2ogpte_client
+    except ImportError:
+        try:
+            from src.evaluators.h2ogpte_client import is_configured, get_credentials, get_h2ogpte_client
+        except ImportError:
+            status['h2ogpte_connection'] = 'FAILED: could not import h2ogpte_client'
+            return status
+
+    status['h2ogpte_configured'] = is_configured()
+    if is_configured():
+        try:
+            client = get_h2ogpte_client()
+            session_id = client.create_chat_session()
+            status['h2ogpte_connection'] = 'OK'
+            status['test_session_id'] = session_id
+        except Exception as e:
+            status['h2ogpte_connection'] = f'FAILED: {str(e)}'
+    else:
+        api_key, address = get_credentials()
+        status['h2ogpte_connection'] = 'NOT CONFIGURED'
+        status['h2ogpte_api_key_set'] = bool(api_key)
+        status['h2ogpte_address_set'] = bool(address)
+
+    return status
 
 
 def main():
