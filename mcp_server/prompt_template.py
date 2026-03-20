@@ -7,7 +7,7 @@ sub-agent patterns, no-internet warning) are baked in; everything else
 is injected via keyword arguments.
 
 Follows the same pattern as the shared prompt_template.py but defaults
-to ``claude_tool_runner.py`` (required for MCP tool access).
+to ``litellm_tool_runner.py`` (required for MCP tool access).
 
 Usage::
 
@@ -306,7 +306,7 @@ def build_user_prompt(
         Optional explanation of verification exit codes / results.
     agent_tools:
         List of agent tool names.  Default includes python, shell,
-        rag_text, rag_vision, and claude_tool_runner (for MCP access).
+        rag_text, rag_vision, and litellm_tool_runner (for MCP access).
     openai_agent_base_url:
         Optional OpenAI-compatible base URL for sub-agent spawning.
     extra_user_sections:
@@ -316,7 +316,7 @@ def build_user_prompt(
         agent_tools = [
             "python", "shell", "rag_text", "rag_vision",
             "convert_document_to_text.py", "ask_question_about_documents.py",
-            "mermaid_renderer.py", "claude_tool_runner.py",
+            "litellm_tool_runner.py",
         ]
 
     files_section = ""
@@ -421,23 +421,27 @@ def build_sumbench_system_prompt() -> str:
             "These credentials are injected automatically by the platform as encrypted "
             "secrets. Setting them manually will cause a decryption error.\n\n"
             "## How to Call MCP Tools\n\n"
-            "Import `claude_tool_runner` and call it with a natural-language query. "
-            "This is the **ONLY** way to invoke the evaluation.\n\n"
+            "Use `litellm_tool_runner` with `tools=[\"sumbench\"]` to invoke the "
+            "SumBench MCP server. This is the **ONLY** way to invoke the evaluation.\n\n"
             "**DO NOT** import from `mcp_tools_runner`, `evaluators`, `tool_logic`, "
             "or `server.py` directly. DO NOT inspect module contents or function "
             "signatures. The MCP server handles everything internally.\n\n"
             "### Step 1: Verify Environment\n\n"
             "After bootstrap, call `check_environment` to verify everything is ready:\n\n"
             "```python\n"
-            "from api_server.agent_tools.claude_tool_runner import claude_tool_runner\n"
-            "result = claude_tool_runner(query=\"Call the check_environment tool to verify "
-            "the MCP server environment is ready. Report the full status.\")\n"
+            "from api_server.agent_tools.litellm_tool_runner import litellm_tool_runner\n"
+            "\n"
+            "result = litellm_tool_runner(\n"
+            "    query=\"Call the check_environment tool to verify the MCP server "
+            "environment is ready. Report the full status.\",\n"
+            "    tools=[\"sumbench\"]\n"
+            ")\n"
             "print(result)\n"
             "```\n\n"
             "If any component shows FAILED or MISSING, fix it before proceeding.\n\n"
             "### Step 2: Run Evaluation\n\n"
             "```python\n"
-            "from api_server.agent_tools.claude_tool_runner import claude_tool_runner\n"
+            "from api_server.agent_tools.litellm_tool_runner import litellm_tool_runner\n"
             "\n"
             "query = \"\"\"\n"
             "Evaluate the quality of this generated summary using the Sumbench MCP tool.\n"
@@ -459,46 +463,46 @@ def build_sumbench_system_prompt() -> str:
             "Provide the complete metric results.\n"
             "\"\"\"\n"
             "\n"
-            "result = claude_tool_runner(query=query)\n"
+            "result = litellm_tool_runner(query=query, tools=[\"sumbench\"])\n"
             "```\n\n"
             "### Scenario Detection & Metric Selection\n\n"
             "First, identify which inputs are available, then call `run_multiple` "
             "with the correct metrics for that scenario.\n\n"
             "This is an **airgapped** environment — metrics requiring model downloads "
             "(perplexity, bertscore, entity_coverage, semantic_coverage, bertscore_recall) "
-            "are NOT available. Use only the metrics listed below.\n\n"
+            "and LLM Judge metrics requiring H2OGPTE credentials "
+            "(llm_faithfulness, llm_coherence, llm_relevance, llm_fluency, llm_dag, "
+            "llm_prometheus, factchecker_api) are NOT available. "
+            "Use only the lexical metrics listed below.\n\n"
             "**Scenario A — Source + Reference (Full Diagnostic):**\n"
-            "- Metrics: `[\"rouge\", \"bleu\", \"meteor\", \"levenshtein\", \"chrf\", "
-            "\"factchecker_api\", \"llm_faithfulness\", \"llm_coherence\", "
-            "\"llm_relevance\", \"llm_fluency\", \"llm_dag\", \"llm_prometheus\"]`\n"
+            "- Metrics: `[\"rouge\", \"bleu\", \"meteor\", \"levenshtein\", \"chrf\"]`\n"
             "- Parameters: summary, source, reference\n\n"
             "**Scenario B — Source Only (Truth-First):**\n"
-            "- Metrics: `[\"factchecker_api\", \"llm_faithfulness\", \"llm_relevance\"]`\n"
-            "- Parameters: summary, source\n\n"
+            "- Metrics: None available in airgapped mode (all source-only metrics require H2OGPTE)\n"
+            "- Skip evaluation or note that no airgapped metrics apply\n\n"
             "**Scenario C — Reference Only (Stylistic-Match):**\n"
-            "- Metrics: `[\"rouge\", \"bleu\", \"meteor\", \"levenshtein\", \"chrf\", "
-            "\"llm_coherence\"]`\n"
+            "- Metrics: `[\"rouge\", \"bleu\", \"meteor\", \"levenshtein\", \"chrf\"]`\n"
             "- Parameters: summary, reference\n\n"
             "**Scenario D — Neither (Linguistic-Sanity):**\n"
-            "- Metrics: `[\"llm_fluency\"]`\n"
-            "- Parameters: summary\n\n"
+            "- Metrics: None available in airgapped mode (llm_fluency requires H2OGPTE)\n"
+            "- Skip evaluation or note that no airgapped metrics apply\n\n"
             "**IMPORTANT:**\n"
-            "- Always install dependencies and set env vars BEFORE calling claude_tool_runner\n"
+            "- Always install dependencies and set env vars BEFORE calling litellm_tool_runner\n"
             "- Call run_multiple ONCE with all applicable metrics — do not call metrics individually\n"
-            "- Do NOT try to call evaluation functions directly — use claude_tool_runner ONLY"
+            "- Do NOT try to call evaluation functions directly — use litellm_tool_runner with tools=[\"sumbench\"] ONLY"
         ),
         output_filename="evaluation_report.md",
         output_instructions="Verify the report contains a score table and overall assessment",
         key_rules=[
             "Install dependencies from deps.zip BEFORE calling any MCP tools",
-            "Call check_environment via claude_tool_runner AFTER bootstrap to verify NLTK data and H2OGPTE credentials before evaluating",
+            "Call check_environment via litellm_tool_runner(query=..., tools=[\"sumbench\"]) AFTER bootstrap to verify NLTK data and H2OGPTE credentials before evaluating",
             "Do NOT use shell `export` — it is blocked. Use Python `os.environ` for NLTK_DATA and airgapped flags only",
             "Do NOT set H2OGPTE_API_KEY or H2OGPTE_ADDRESS via os.environ — credentials are injected automatically by the platform as encrypted secrets",
-            "NEVER import from mcp_tools_runner, evaluators, tool_logic, or server.py — use claude_tool_runner ONLY",
+            "NEVER import from mcp_tools_runner, evaluators, tool_logic, or server.py — use litellm_tool_runner with tools=[\"sumbench\"] ONLY",
             "Detect the scenario (source+reference, source only, reference only, neither) and select metrics accordingly",
-            "Call run_multiple ONCE via claude_tool_runner with the correct airgapped metric list for the scenario",
+            "Call run_multiple ONCE via litellm_tool_runner(query=..., tools=[\"sumbench\"]) with the correct airgapped metric list for the scenario",
             "Always pass FULL text in the query, never filenames or URLs",
-            "Use claude_tool_runner(query=...) — NOT litellm_tool_runner",
+            "Use litellm_tool_runner(query=..., tools=[\"sumbench\"]) for ALL MCP tool calls",
             "Present results as a Markdown table: Category | Metric | Score | Interpretation",
             "Include 3–4 bullet-point insights and an overall quality assessment",
         ],
@@ -534,7 +538,7 @@ def build_sumbench_user_prompt(
         output_filename="evaluation_report.md",
         agent_tools=[
             "python", "shell", "rag_text",
-            "claude_tool_runner.py",
+            "litellm_tool_runner.py",
         ],
     )
 

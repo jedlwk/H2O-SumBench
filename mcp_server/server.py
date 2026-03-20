@@ -207,6 +207,7 @@ METRIC_CATALOG = {
         'description': 'G-Eval faithfulness — factual consistency with source',
         'recommended_for': ['source+reference', 'source_only'],
         'requires_model': None,
+        'requires_h2ogpte': True,
     },
     'llm_coherence': {
         'category': 'LLM Judge',
@@ -214,6 +215,7 @@ METRIC_CATALOG = {
         'description': 'G-Eval coherence — logical flow and structure',
         'recommended_for': ['source+reference', 'reference_only'],
         'requires_model': None,
+        'requires_h2ogpte': True,
     },
     'llm_relevance': {
         'category': 'LLM Judge',
@@ -221,6 +223,7 @@ METRIC_CATALOG = {
         'description': 'G-Eval relevance — pertinence to the source topic',
         'recommended_for': ['source+reference', 'source_only'],
         'requires_model': None,
+        'requires_h2ogpte': True,
     },
     'llm_fluency': {
         'category': 'LLM Judge',
@@ -228,6 +231,7 @@ METRIC_CATALOG = {
         'description': 'G-Eval fluency — grammar and readability',
         'recommended_for': ['source+reference', 'neither'],
         'requires_model': None,
+        'requires_h2ogpte': True,
     },
     'llm_dag': {
         'category': 'LLM Judge',
@@ -235,6 +239,7 @@ METRIC_CATALOG = {
         'description': 'DAG — holistic quality assessment via LLM',
         'recommended_for': ['source+reference'],
         'requires_model': None,
+        'requires_h2ogpte': True,
     },
     'llm_prometheus': {
         'category': 'LLM Judge',
@@ -242,6 +247,7 @@ METRIC_CATALOG = {
         'description': 'Prometheus — fine-grained LLM evaluation',
         'recommended_for': ['source+reference'],
         'requires_model': None,
+        'requires_h2ogpte': True,
     },
     'factchecker_api': {
         'category': 'LLM Judge',
@@ -249,6 +255,7 @@ METRIC_CATALOG = {
         'description': 'LLM-based fact-checking against the source document',
         'recommended_for': ['source+reference', 'source_only'],
         'requires_model': None,
+        'requires_h2ogpte': True,
     },
 }
 
@@ -273,7 +280,8 @@ def _detect_scenario(source, reference):
 def _metrics_for_scenario(scenario):
     """Return (metrics_to_run, skipped_metrics) for a scenario.
 
-    In airgapped mode, metrics requiring model downloads are skipped.
+    In airgapped mode, metrics requiring model downloads or H2OGPTE
+    credentials are skipped.
     """
     all_metrics = [
         name for name, info in METRIC_CATALOG.items()
@@ -281,8 +289,13 @@ def _metrics_for_scenario(scenario):
     ]
     if not _AIRGAPPED_MODE:
         return all_metrics, []
-    run = [m for m in all_metrics if METRIC_CATALOG[m].get('requires_model') is None]
-    skipped = [m for m in all_metrics if METRIC_CATALOG[m].get('requires_model') is not None]
+
+    def _needs_skip(m):
+        info = METRIC_CATALOG[m]
+        return info.get('requires_model') is not None or info.get('requires_h2ogpte', False)
+
+    run = [m for m in all_metrics if not _needs_skip(m)]
+    skipped = [m for m in all_metrics if _needs_skip(m)]
     return run, skipped
 
 
@@ -450,8 +463,9 @@ def list_metrics():
         if 'description' not in entry:
             entry['description'] = info['description']
         needs_model = info.get('requires_model') is not None
-        entry['available_in_airgap'] = not needs_model
-        if _AIRGAPPED_MODE and needs_model:
+        needs_h2ogpte = info.get('requires_h2ogpte', False)
+        entry['available_in_airgap'] = not needs_model and not needs_h2ogpte
+        if _AIRGAPPED_MODE and (needs_model or needs_h2ogpte):
             entry['status'] = 'disabled (airgapped)'
         enriched.append(entry)
     return enriched
